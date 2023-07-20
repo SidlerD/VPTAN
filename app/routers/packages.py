@@ -7,5 +7,5 @@ router = APIRouter(
 )
 
 @router.get("/")
-def root():
+def getAllPackages():
     return {'message': 'Go to /<package-id> to get the files for package-id'}
