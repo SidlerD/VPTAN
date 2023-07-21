@@ -1,7 +1,7 @@
 from datetime import date
 import io
 from typing import Union
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from fastapi.responses import StreamingResponse
 import requests
 
@@ -26,9 +26,16 @@ def get_package(ctan_pkg: Package = Depends(pkg_id_exists), date: Union[date, No
      
      # If version = latest or requested version equal to version on CTAN: Download from CTAN
     if check_satisfying(ctan_pkg.version, req_version):
-        return StreamingResponse(io.BytesIO(CTAN.download_pkg(ctan_pkg)))
+        byte_data = CTAN.download_pkg(ctan_pkg)
+    else:
+        byte_data = TL.download_pkg(ctan_pkg, req_version)
 
-    return TL.download_pkg(ctan_pkg, req_version)
+    return Response(byte_data, media_type="application/x-zip-compressed")
+    # Src: https://stackoverflow.com/a/66495136/10657095
+    # Idk if I need the headers, it seems to work without them
+    # return Response(byte_data, media_type="application/x-zip-compressed", headers={
+    #     'Content-Disposition': f'attachment;filename={ctan_pkg.id}.zip'
+    # })
 
 
 def check_satisfying(ctan_version: Version, req_version: Version):

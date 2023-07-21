@@ -8,7 +8,7 @@ from app.schemas import Package
 
 logger = logging.getLogger("default")
 
-def download_pkg(pkg: Package):
+def download_pkg(pkg: Package) -> bytes:
     print(f"CTAN: Downloading {pkg} {date}")
     
     # Extract download path
@@ -25,6 +25,7 @@ def download_pkg(pkg: Package):
         raise HTTPException(status_code=400, detail={'reason': f"{pkg.id} not available on CTAN", 'CTAN_response': pkg})
 
     response = requests.get(url, allow_redirects=True)
-    if response.ok:
-        return response.content
-    raise HTTPException(400, response.reason)
+    if not response.ok:
+        raise HTTPException(400, response.reason)
+
+    return response.content

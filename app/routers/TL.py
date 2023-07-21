@@ -15,7 +15,7 @@ from app.schemas import Package, Version
 
 logger = logging.getLogger("default")
 
-def download_pkg(pkg: Package, version: Version):
+def download_pkg(pkg: Package, version: Version) -> bytes:
     """
         let elems = document.querySelectorAll("div.content td > a.ls-blob")
         let links = Array.from(elems).map(elem => elem.getAttribute("href"))
@@ -38,7 +38,7 @@ def download_pkg(pkg: Package, version: Version):
     return write_files_to_binary_zip(urls, pkg.id)
 
 
-def write_files_to_binary_zip(file_urls: list[str], pkg_id: str):
+def write_files_to_binary_zip(file_urls: list[str], pkg_id: str) -> bytes:
     zip_filename = "%s.zip" % pkg_id
 
     s = io.BytesIO()
@@ -60,10 +60,7 @@ def write_files_to_binary_zip(file_urls: list[str], pkg_id: str):
     # Must close zip for all contents to be written
     zf.close()
 
-    # Grab ZIP file from in-memory, make response with correct MIME-type
-    resp = Response(s.getvalue(), media_type="application/x-zip-compressed", headers={
-        'Content-Disposition': f'attachment;filename={zip_filename}'
-    })
-
     logger.info(f"Successfully built zip-file, returning it now")
-    return resp
+
+    # Grab ZIP file from in-memory, return
+    return s.getvalue()
