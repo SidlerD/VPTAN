@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, Response
 from fastapi.responses import StreamingResponse
 import requests
 
-from app.routers import CTAN, TL
+from app.services import TL
+from app.services import CTAN
 from ..dependencies import pkg_id_exists, valid_date
 from app.schemas import Package, Version
 
