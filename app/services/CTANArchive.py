@@ -9,7 +9,7 @@ import zipfile
 from fastapi import HTTPException, Response, status
 import requests
 from bs4 import BeautifulSoup as bs4
-from app.routers import History
+from app.services import _CTANHistory
 
 from app.schemas import Package, Version
 
@@ -24,7 +24,7 @@ def download_pkg(pkg: Package, version: Version) -> bytes:
         raise NotImplementedError("Can only download packages where I know the ctan path")
     
     base_url = "https://git.texlive.info/CTAN/plain"
-    commit_hash = History.get_commit_hash(pkg, version)
+    commit_hash = _CTANHistory.get_commit_hash(pkg, version)
     overview_url =f"{base_url}{pkg.ctan.path}?id={commit_hash}"
 
     page = requests.get(overview_url)  
