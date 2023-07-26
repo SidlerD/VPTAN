@@ -11,20 +11,145 @@ import requests
 import json
 from collections import defaultdict
 
+class CTANHistory:
+    def __init__(self, ctan_archive_path = 'CTAN') -> None:
+        self._ctan_path = os.path.normpath(ctan_archive_path)
+        # self._ctan_path = Path(ctan_archive_path)
+        self._file = "CTAN_packages.json"
+        self.pkg_infos = self._get_pkg_infos()
 
-def get_commit_hash(pkg: Package, version: Version):
-    return "2d6f89f83b7567136c3a40b3b55f9be1e06bd99e"
+    def get_commit_hash(self, pkg: Package, version: Version):
+        return "2d6f89f83b7567136c3a40b3b55f9be1e06bd99e"
+
+    def _get_pkg_infos(self) -> list[Package]:
+        # ASSUMPTION: Every package's files are stored in a folder with pkg_name
+        if not exists(self._file):
+            all = requests.get("http://www.ctan.org/json/2.0/packages").json()
+
+            res = []
+            for pkg in all:
+                pkg_id = pkg['key']
+
+                pkgInfo_res = requests.get(f"https://www.ctan.org/json/2.0/pkg/{pkg_id}")
+                if not pkgInfo_res.ok:
+                    print(f"{pkg['name']} not on CTAN")
+                    continue
+                pkgInfo = pkgInfo_res.json()
+                res.append(Package(**pkgInfo))
+
+            with open(self._file, "w", encoding='utf-8') as f:
+                json.dump(res, f, default=lambda elem: elem.__dict__)
+        else:
+            with open(self._file, "r", encoding='utf-8') as f:
+                data = json.load(f)
+                res = [Package(**pkginfo) for pkginfo in data]
+        
+        return res
+
+    def _build_index_for_hash(self, index, commit_hash):
+        """"""
+        for pkg in self.pkg_infos: # For each package:
+            pkg_dir = None
+            found = False
+            if pkg.ctan and pkg.ctan.path:
+                subdir = os.path.normpath(pkg.ctan.path).lstrip(os.path.sep) 
+                pkg_dir = join(self._ctan_path, subdir)
+            if not pkg_dir or not isdir(pkg_dir):
+                print(f"Couldn't find {pkg.name} anywhere in {pkg_dir if pkg_dir else self._ctan_path}")
+                continue
+            # TODO: Add fallback to glob-search here
+
+            # See if pkg_id.sty or pkg_id.cls exists (Can be nested in dirs)
+            relevant_files = get_relevant_files(pkg_dir, pkg.name)
+
+            # Try to extract versions from pkg_name.sty/.cls
+            for file in relevant_files['sty/cls']:
+                found = extract_version_from_file(file, pkg.id, index, commit_hash)
+
+            if found:
+                continue
+
+            # No files to reliably extract version from
+
+            # Install each ins-file and check for pkg_name.sty/.cls
+            for ins_file in relevant_files['ins']:
+                try:
+                    install_file(ins_file)
+                except Exception as e:
+                    print(f'Problem while installing {basename(ins_file)}: {e}')
+                    continue
+
+                _relevant_files = get_relevant_files(pkg_dir, pkg.name, sty_cls=True, ins=False, dtx=False)
+                # Try to extract versions from pkg_name.sty/.cls
+                for file in _relevant_files['sty/cls']:
+                    found = extract_version_from_file(file, pkg.id, index, commit_hash)
+
+                if found:
+                    break
+            
+            if found:
+                continue
+
+            # Look at dtx files and try installing them
+            for dtx_file in relevant_files['dtx']:
+                try:
+                    install_file(dtx_file)
+                except Exception as e:
+                    print(f'Problem while installing {basename(dtx_file)}: {e}')
+                _relevant_files = get_relevant_files(pkg_dir, pkg.name, sty_cls=True, ins=False, dtx=False)
+                # Try to extract versions from pkg_name.sty/.cls
+                for file in _relevant_files['sty/cls']:
+                    found = extract_version_from_file(file, pkg.id, index, commit_hash)
+
+                if found:
+                    break
+            
+            if not found:
+                print(f'WARNING: Couldnt find any version for {pkg.name}. Files: {[basename(file) for file in os.listdir(pkg_dir)]}')
+
+    def build_index(self):
+        index = defaultdict(lambda: defaultdict(dict))
+        try:
+            # Get a list of all commit hashes
+            commit_hashes = subprocess.check_output(['git', 'rev-list', 'HEAD']).decode().splitlines()
+            # print(commit_hashes)
 
 
-repo_path = r"CTAN"
+            
+
+            # Iterate over each commit hash
+            # for commit_hash in commit_hashes:
+            #     try:
+            #         subprocess.call(['git', 'checkout', commit_hash])  # Checkout the commit
+            #     except:
+            #         subprocess.call(['git', 'stash', commit_hash])  # stash any changes
+            #         subprocess.call(['git', 'checkout', '--force', commit_hash])  # Checkout the commit
+            #     try:
+            #         extract_versions(index, commit_hash)
+            #     except Exception as e:
+            #         print(f"unexpected error at commit {commit_hash}: {e}")
+            #         logging.exception(e)
+
+            self._build_index_for_hash(index, "commit_hash")
+
+            print("All commit-hashes done")
+            with open('index.json', "w") as indexf:
+                json.dump(index, indexf)
+                print("Wrote index to file")
+
+            # # Return to the latest commit
+            # subprocess.call(['git', 'checkout', 'master'])
+        except Exception as e:
+            logging.exception(e)
+            print(index)
+            with open('index.json', "w") as indexf:
+                indexf.write(json.dumps(index))
+                print("Wrote index to file")
+
+
+
 # pkgs_path = os.path.join(repo_path, 'macros\latex')
 pkgs_path = join('macros', 'latex')
-packages_file = r"TL_packages.json"
-
-name_to_id = None
-with open(packages_file, "r") as f:
-        cont = f.read()
-        name_to_id = json.loads(cont) # List of all packages on CTAN
 
 reg_patterns = {
     'pkg': {'reg': r'\\ProvidesPackage\s*\{(.*?)\}\s*(?:\[([\S\s]*?)\])?', 'version': 2, 'name': 1},  # Group 1=name, 2=version
@@ -34,99 +159,9 @@ reg_patterns = {
 
 }
 
-def get_packages_list():
-    res = requests.get("http://www.ctan.org/json/2.0/packages").json()
-
-    index = {}
-    for pkg in res:
-        # if pkg['name'] != pkg['key']:
-        index[pkg['name']] = pkg['key']
-
-
-    with open(packages_file, "w", encoding='utf-8') as f:
-        f.write(json.dumps(index))
-
-def find_dir(pkg_name: str) -> str:
-    # ASSUMPTION: Every package's files are stored in a folder with pkg_name
-    possible_subdirs = []
-    for folder in ["contrib", "exptl", "required"]:
-        path = join(pkgs_path, folder, pkg_name) 
-        if exists(path):
-            possible_subdirs.append(path)
-    if len(possible_subdirs) > 0:
-        return possible_subdirs[0]
-    
-    dirs = sorted(Path('.').glob(f'**/{pkg_name}'), key=lambda p: len(p.parts))
-    if len(dirs) == 1:
-        return str(dirs[0])
-    elif len(dirs) == 0:
-        raise Exception(f"Couldn't find folder for package {pkg_name}")
-    else:
-        print(f"{len(dirs)} dirs exist for {pkg_name}: {dirs}. Using {dirs[0]}")
-        return dirs[0]
-
-def extract_versions(index, commit_hash):
-    """Assumes that all packages are in subfolder /macros/latex/"""
-    for pkg_name in name_to_id: # For each package:
-        pkg_id = name_to_id[pkg_name]
-        found = False
-        try:
-            subdir = find_dir(pkg_name)
-        except Exception as e:
-            print(e)
-
-        # See if pkg_id.sty or pkg_id.cls exists (Can be nested in dirs)
-        relevant_files = get_relevant_files(subdir, pkg_name)
-
-        # Try to extract versions from pkg_name.sty/.cls
-        for file in relevant_files['sty/cls']:
-            found = extract_version_from_file(file, pkg_id, index, commit_hash)
-
-        if found:
-            continue
-
-        # No files to reliably extract version from
-
-        # Install each ins-file and check for pkg_name.sty/.cls
-        for ins_file in relevant_files['ins']:
-            try:
-                install_file(ins_file)
-            except Exception as e:
-                print(f'Problem while installing {basename(ins_file)}: {e}')
-                continue
-
-            _relevant_files = get_relevant_files(subdir, pkg_name, sty_cls=True, ins=False, dtx=False)
-            # Try to extract versions from pkg_name.sty/.cls
-            for file in _relevant_files['sty/cls']:
-                found = extract_version_from_file(file, pkg_id, index, commit_hash)
-
-            if found:
-                break
-        
-        if found:
-            continue
-
-        # Look at dtx files and try installing them
-        for dtx_file in relevant_files['dtx']:
-            try:
-                install_file(dtx_file)
-            except Exception as e:
-                print(f'Problem while installing {basename(dtx_file)}: {e}')
-            _relevant_files = get_relevant_files(subdir, pkg_name, sty_cls=True, ins=False, dtx=False)
-            # Try to extract versions from pkg_name.sty/.cls
-            for file in _relevant_files['sty/cls']:
-                found = extract_version_from_file(file, pkg_id, index, commit_hash)
-
-            if found:
-                break
-        
-        if not found:
-            print(f'WARNING: Couldnt find any version for {pkg_name}')
-
-
 def get_relevant_files(subdir: str, pkg_name: str, sty_cls = True, ins = True, dtx = True):
     relevant_files = {'sty/cls': [], 'ins': [], 'dtx': []}
-    if os.path.islink(subdir): # FIXME: This doesn't work on Windows, only on Linux
+    if subdir and os.path.islink(subdir): # FIXME: This doesn't work on Windows, only on Linux
         print(subdir + " is a symlink, resolving now")
         # FIXME: For something like a4, this returns a simple folder name (i.e. relative path) instead of the full path
         subdir = os.readlink(subdir)
@@ -204,37 +239,5 @@ def extract_version_from_file(fpath: str, pkg_id: str, index: defaultdict, commi
 
 
 if __name__ == '__main__':
-    # Change directory to the repository path
-    print(os.getcwd())
-    os.chdir(repo_path)
-
-    # Get a list of all commit hashes
-    commit_hashes = subprocess.check_output(['git', 'rev-list', 'HEAD']).decode().splitlines()
-    # print(commit_hashes)
-
-    index = defaultdict(lambda: defaultdict(dict))
-
-    
-
-    # Iterate over each commit hash
-    # for commit_hash in commit_hashes:
-    #     try:
-    #         subprocess.call(['git', 'checkout', commit_hash])  # Checkout the commit
-    #     except:
-    #         subprocess.call(['git', 'stash', commit_hash])  # stash any changes
-    #         subprocess.call(['git', 'checkout', '--force', commit_hash])  # Checkout the commit
-    #     try:
-    #         extract_versions(index, commit_hash)
-    #     except Exception as e:
-    #         print(f"unexpected error at commit {commit_hash}: {e}")
-    #         logging.exception(e)
-
-    extract_versions(index, "commit_hash")
-
-    print("All commit-hashes done")
-    with open(r'\\wsl$\UbuntuG\root\index.json', "w") as indexf:
-        indexf.write(json.dumps(index))
-        print("Wrote index to file")
-
-    # # Return to the latest commit
-    # subprocess.call(['git', 'checkout', 'master'])
+    hist = CTANHistory(ctan_archive_path=r"\\wsl.localhost\UbuntuG\root\CTAN")
+    hist.build_index()
