@@ -1,7 +1,7 @@
 from datetime import date
 import re
 from typing import Optional, Union
-from dateutil    import parser
+from dateutil import parser
 import requests
 from fastapi import HTTPException, status
 
