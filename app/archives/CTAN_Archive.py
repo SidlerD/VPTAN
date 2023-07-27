@@ -19,14 +19,16 @@ class CTAN_Archive(IArchive):
         self._ctan_path = os.path.normpath(ctan_archive_path)
         # self._ctan_path = Path(ctan_archive_path)
         self._pkg_info_file = "CTAN_packages.json"
-        self._index_file = "CTAN_Archive.index.json"
+        self._index_file = "CTAN_Archive_index.json"
         self._pkg_infos = self._get_pkg_infos()
         self._index = self._read_index_file()
         self._logger = logging.getLogger('archives')
 
     def update_index(self):
+        old_cwd = os.getcwd()
+        
         try:
-            commit_hashes = subprocess.check_output(['git', 'rev-list', 'HEAD']).decode().splitlines()
+            commit_hashes = subprocess.check_output(['git', 'rev-list', 'HEAD'], cwd=self._ctan_path).decode().splitlines()
             indexed_commit_hashes = self._index.keys()
 
             hashes_to_index = [hash for hash in commit_hashes if hash not in indexed_commit_hashes]
@@ -36,6 +38,8 @@ class CTAN_Archive(IArchive):
         except Exception as e:
             self._logger.error(str(e))
             logging.exception(e)
+        
+        os.chdir(old_cwd)
 
     def get_commit_hash(self, pkg: Package):
         return "2d6f89f83b7567136c3a40b3b55f9be1e06bd99e"
@@ -83,7 +87,7 @@ class CTAN_Archive(IArchive):
     def _write_index_to_file(self):
         try:
             with open(self._index_file, "w") as indexf:
-                json.dump(self._index, indexf)
+                json.dump(self._index, indexf, indent=2)
 
         except Exception as e:
             logging.exception(e)
@@ -174,7 +178,7 @@ class CTAN_Archive(IArchive):
             print(commit_hashes)
 
             # Iterate over each commit hash
-            for commit_hash in commit_hashes[:3]:
+            for commit_hash in commit_hashes[:5]:
                 try:
                     subprocess.call(['git', 'checkout', commit_hash])  # Checkout the commit
                 except:
