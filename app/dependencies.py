@@ -1,6 +1,6 @@
 from datetime import date
 import re
-from typing import Union
+from typing import Optional, Union
 from dateutil    import parser
 import requests
 from fastapi import HTTPException, status
@@ -26,7 +26,7 @@ async def pkg_id_exists(pkg_id: str) -> Package:
         }
     )
 
-def valid_date(date: Union[str, None] = None) -> date | None:
+def valid_date(date: Union[str, None] = None) -> Optional[date]:
     if not date:
         return None
     try:

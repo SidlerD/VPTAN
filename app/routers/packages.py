@@ -1,11 +1,11 @@
 from datetime import date
 import io
 from typing import Union
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Response, HTTPException
 from fastapi.responses import StreamingResponse
 import requests
 
-from app.services import CTANArchive
+from app.services import ArchiveIndex
 from app.services import CTAN
 from ..dependencies import pkg_id_exists, valid_date
 from app.schemas import Package, Version
@@ -29,7 +29,12 @@ def get_package(ctan_pkg: Package = Depends(pkg_id_exists), date: Union[date, No
     if check_satisfying(ctan_pkg.version, req_version):
         byte_data = CTAN.download_pkg(ctan_pkg)
     else:
-        byte_data = CTANArchive.download_pkg(ctan_pkg, req_version)
+        try:
+            ctan_pkg.version = req_version # Make sure we don't accidentaly use ctan_version for download
+            byte_data = ArchiveIndex.download_pkg(ctan_pkg)
+        except HTTPException as e:
+            raise
+        
 
     return Response(byte_data, media_type="application/x-zip-compressed")
     # Src: https://stackoverflow.com/a/66495136/10657095
