@@ -99,17 +99,36 @@ class CTAN_Archive(IArchive):
 
     def _build_index_for_hash(self, commit_hash):
         """"""
+        curr_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
+        if curr_hash != commit_hash:
+            raise ValueError(f"Building index for {commit_hash}, but git-repo is at {curr_hash}")
+        
+        self._logger.info(f"Building index for {commit_hash}")
+        changed_files = helpers.parse_changed_files(self._ctan_path)
+        changed_dirs = set(os.path.split(file)[0] for file in changed_files)
+
         for pkg in self._pkg_infos: # For each package:
-            pkg_dir = None
-            found = False
-            if pkg.ctan and pkg.ctan.path:
-                subdir = os.path.normpath(pkg.ctan.path).lstrip(os.path.sep) 
-                pkg_dir = join(self._ctan_path, subdir)
-            if not pkg_dir or not exists(pkg_dir):
-                print(f"Couldn't find {pkg.name} anywhere in {pkg_dir if pkg_dir else self._ctan_path}")
-                self._index[commit_hash][pkg.id]["Error"] = "Not found in git-archive"
+            if not pkg.ctan or not pkg.ctan.path:
+                print(f"{pkg.id} has no path on ctan. Skipping")
                 continue
-            elif not isdir(pkg_dir) and isfile(pkg_dir):
+            pkg.ctan.path = pkg.ctan.path.lstrip(os.path.sep) 
+            pkg_dir = join(self._ctan_path, pkg.ctan.path)
+
+            # Only extract version for pkgs whose files have changed
+            if isfile(pkg_dir) and pkg.ctan.path not in changed_files:
+                continue    
+            if isdir(pkg_dir) and pkg.ctan.path not in changed_dirs:
+                continue    
+            
+            found = False
+            
+            if not exists(pkg_dir):
+                print(f"{pkg.id} should be at {pkg_dir}, which doesn't exist.")
+                self._index[commit_hash][pkg.id]["Error"] = f"{pkg.id} should be at {pkg_dir}, which doesn't exist."
+                continue
+                
+            # Case where Ctan.path is a file, not a folder
+            if isfile(pkg_dir):
                 # pkg.ctan.path can be path to a file (e.g. /biblio/bibtex/contrib/misc/aaai-named.bst for aaai-named): In this case, only look at that one file
                 found = helpers.extract_version_from_file(pkg_dir, pkg.id, self._index, commit_hash)
                 if not found:
@@ -175,7 +194,6 @@ class CTAN_Archive(IArchive):
 
             # Get a list of all commit hashes
             commit_hashes = hashes or subprocess.check_output(['git', 'rev-list', 'HEAD']).decode().splitlines()
-            print(commit_hashes)
 
             # Iterate over each commit hash
             for commit_hash in commit_hashes[:5]:

@@ -15,9 +15,19 @@ reg_patterns = {
     'pkg': {'reg': r'\\ProvidesPackage\s*\{(.*?)\}\s*(?:\[([\S\s]*?)\])?', 'version': 2, 'name': 1},  # Group 1=name, 2=version
     'cls': {'reg': r'\\ProvidesClass\s*\{(.*?)\}[^\[]*([\S\s]*?)\]', 'version': 2, 'name': 1}, 
     'expl_pkg': {'reg': r'\\ProvidesExplPackage\s*\{(.*?)(?:\..*)?\}\s*\{(.*?)(?:\..*)?\}\s*\{(.*?)(?:\..*)?\}\s*\{(.*?)(?:\..*)?\}', 'version': 2, 'name': 1},  # Group 1=name, 2=date, 3=version, 4=description
+    'expl_cls': {'reg': r'\\ProvidesExplClass\s*\{(.*?)(?:\..*)?\}\s*\{(.*?)(?:\..*)?\}\s*\{(.*?)(?:\..*)?\}\s*\{(.*?)(?:\..*)?\}', 'version': 2, 'name': 1},  # Group 1=name, 2=date, 3=version, 4=description
     'file': {'reg': r'\\ProvidesFile\s*\{(.*?)\}\s*\[(.*?)\]', 'version': 2, 'name': 1}  # Group 1=name, 2=version
 
 }
+
+def parse_changed_files(path_to_ctan: str) -> "list[str]":
+    fpath = os.path.join(path_to_ctan, 'FILES.last07days')
+    with open(fpath, 'r') as f:
+        lines = f.readlines()
+        files_changed = [line.split('|')[-1].strip() for line in lines]
+    
+    return [file for file in files_changed if not file.startswith(('systems', 'indexing', 'install'))]
+
 
 
 def download_files_to_binary_zip(file_urls: "list[str]", pkg_id: str) -> bytes:
@@ -87,7 +97,7 @@ def extract_version_from_file(fpath: str, pkg_id: str, index: defaultdict, commi
                     pkg_version = match.group(regex['version']) 
                     break
         elif fpath.endswith('.cls'):
-            for regex in [reg_patterns['cls'], reg_patterns['file']]:
+            for regex in [reg_patterns['cls'], reg_patterns['expl_cls'], reg_patterns['file']]:
                 match = re.search(regex['reg'], content)
                 if match:
                     pkg_version = match.group(regex['version']) 
