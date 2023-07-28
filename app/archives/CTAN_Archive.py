@@ -22,24 +22,51 @@ class CTAN_Archive(IArchive):
         self._index_file = "CTAN_Archive_index.json"
         self._pkg_infos = self._get_pkg_infos()
         self._index = self._read_index_file()
-        self._logger = logging.getLogger('archives')
+        self._logger = helpers.make_logger(name='CTANArchive', logging_level=logging.DEBUG)
 
-    def update_index(self):
+    def update_index(self, skipCommits: int = 7):
         old_cwd = os.getcwd()
+        os.chdir(self._ctan_path)
         
         try:
+            # Checkout master (Restores HEAD to latest commit, otherwise getting list of all commits not possible)
+            
+            curr_branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).decode().strip()
+            if curr_branch != 'master':
+                subprocess.call(['git', 'checkout', '--force', 'master'])  # Checkout the commit
+            # TODO: Pull latest changes here
+
             commit_hashes = subprocess.check_output(['git', 'rev-list', 'HEAD'], cwd=self._ctan_path).decode().splitlines()
+
             indexed_commit_hashes = self._index.keys()
 
+            # Only build index for hashes which are not yet in index
             hashes_to_index = [hash for hash in commit_hashes if hash not in indexed_commit_hashes]
             self._logger.info(f"Adding {len(hashes_to_index)} hashes to index: {hashes_to_index}")
 
-            self.build_index(hashes_to_index)
+            # Iterate over each commit hash
+            for i, commit_hash in enumerate(commit_hashes[:100]):
+                if i%skipCommits == 0:
+                    subprocess.call(['git', 'stash'])  # stash any changes
+                    subprocess.call(['git', 'checkout', '--force', commit_hash])  # Checkout the commit
+                    try:
+                            self._build_index_for_hash(commit_hash)
+                    except Exception as e:
+                        self._logger.error(f"unexpected error at commit {commit_hash}: {e}")
+                        logging.exception(e)
+                else:
+                    self._index[commit_hash] = None
+                    self._logger.info(f"Skipping commit {commit_hash}")
+
+            self._logger.info("All commit-hashes done")
+    
         except Exception as e:
             self._logger.error(str(e))
             logging.exception(e)
-        
+
         os.chdir(old_cwd)
+        self._write_index_to_file()
+        
 
     def get_commit_hash(self, pkg: Package):
         return "2d6f89f83b7567136c3a40b3b55f9be1e06bd99e"
@@ -109,21 +136,24 @@ class CTAN_Archive(IArchive):
 
         for pkg in self._pkg_infos: # For each package:
             if not pkg.ctan or not pkg.ctan.path:
-                print(f"{pkg.id} has no path on ctan. Skipping")
+                self._logger.debug(f"{pkg.id} has no path on ctan. Skipping")
                 continue
             pkg.ctan.path = pkg.ctan.path.lstrip(os.path.sep) 
             pkg_dir = join(self._ctan_path, pkg.ctan.path)
 
-            # Only extract version for pkgs whose files have changed
-            if isfile(pkg_dir) and pkg.ctan.path not in changed_files:
-                continue    
-            if isdir(pkg_dir) and pkg.ctan.path not in changed_dirs:
-                continue    
+            # Only extract version for pkgs whose files have changed, except for first commit
+            if len(self._index) > 1:
+                if isfile(pkg_dir) and pkg.ctan.path not in changed_files:
+                    self._logger.debug(f"{pkg.id} has not changed")
+                    continue    
+                if isdir(pkg_dir) and pkg.ctan.path not in changed_dirs:
+                    self._logger.debug(f"{pkg.id} has not changed")
+                    continue    
             
             found = False
             
             if not exists(pkg_dir):
-                print(f"{pkg.id} should be at {pkg_dir}, which doesn't exist.")
+                self._logger.debug(f"{pkg.id} should be at {pkg_dir}, which doesn't exist.")
                 self._index[commit_hash][pkg.id]["Error"] = f"{pkg.id} should be at {pkg_dir}, which doesn't exist."
                 continue
                 
@@ -154,7 +184,7 @@ class CTAN_Archive(IArchive):
                 try:
                     helpers.install_file(ins_file)
                 except Exception as e:
-                    print(f'Problem while installing {ins_file}: {e}')
+                    self._logger.warning(f'Problem while installing {ins_file}: {e}')
                     continue
 
                 _relevant_files = helpers.get_relevant_files(pkg_dir, pkg, sty_cls=True, ins=False, dtx=False)
@@ -173,7 +203,7 @@ class CTAN_Archive(IArchive):
                 try:
                     helpers.install_file(dtx_file)
                 except Exception as e:
-                    print(f'Problem while installing {dtx_file}: {e}')
+                    self._logger.warning(f'Problem while installing {dtx_file}: {e}')
                 _relevant_files = helpers.get_relevant_files(pkg_dir, pkg, sty_cls=True, ins=False, dtx=False)
                 # Try to extract versions from pkg_name.sty/.cls
                 for file in _relevant_files['sty/cls']:
@@ -183,38 +213,8 @@ class CTAN_Archive(IArchive):
                     break
             
             if not found:
-                print(f'WARNING: Couldnt find any version for {pkg.name}. Files: {[basename(file) for file in os.listdir(pkg_dir)]}')
+                self._logger.info(f'WARNING: Couldnt find any version for {pkg.name}. Files: {[basename(file) for file in os.listdir(pkg_dir)]}')
                 self._index[commit_hash][pkg.id]["Error"] = "No version found"
-
-    def build_index(self, hashes: "list[str]" = None):
-        old_cwd = os.getcwd()
-        
-        try:
-            os.chdir(self._ctan_path)
-
-            # Get a list of all commit hashes
-            commit_hashes = hashes or subprocess.check_output(['git', 'rev-list', 'HEAD']).decode().splitlines()
-
-            # Iterate over each commit hash
-            for commit_hash in commit_hashes[:5]:
-                try:
-                    subprocess.call(['git', 'checkout', commit_hash])  # Checkout the commit
-                except:
-                    subprocess.call(['git', 'stash', commit_hash])  # stash any changes
-                    subprocess.call(['git', 'checkout', '--force', commit_hash])  # Checkout the commit
-                try:
-                    self._build_index_for_hash(commit_hash)
-                except Exception as e:
-                    print(f"unexpected error at commit {commit_hash}: {e}")
-                    logging.exception(e)
-
-            print("All commit-hashes done")
-
-        except Exception as e:
-            logging.exception(e)
-
-        os.chdir(old_cwd)
-        self._write_index_to_file()
 
     
     def get_pkg_files(self, pkg: Package) -> bytes:
