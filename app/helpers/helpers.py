@@ -1,4 +1,5 @@
 from collections import defaultdict
+from datetime import date
 import io
 import logging
 import os
@@ -7,10 +8,12 @@ import re
 import subprocess
 import sys
 import zipfile
+from typing import TypedDict
+from dateutil import parser
 
 import requests
 
-from app.schemas import Package
+from app.schemas import Package, Version
 
 
 reg_patterns = {
@@ -21,6 +24,63 @@ reg_patterns = {
     'file': {'reg': r'\\ProvidesFile\s*\{(.*?)\}\s*\[(.*?)\]', 'version': 2, 'name': 1}  # Group 1=name, 2=version
 
 }
+
+class VersionFromIndex(TypedDict):
+    raw: str
+    date: date
+    number: str
+
+
+def version_matches(version: VersionFromIndex, pkg_version: Version):
+    #TODO: Is this enough?
+    if type(version['date']) == str:
+        version['date'] = parser.parse(version['date']).date()
+    if type(pkg_version.date) == str:
+        pkg_version.date = parser.parse(pkg_version.date).date()
+    if not pkg_version:
+        return True
+    if pkg_version.date and pkg_version.date == version['date']:
+        return True
+    if pkg_version.number and pkg_version.number == version['number']:
+        return True
+    return False
+
+def parse_version(version: str) -> VersionFromIndex:
+    if version == "" or version == None:
+        return {'raw': version, 'date': None, 'number': None}
+    
+    if(type(version) == str): # e.g. '2005/05/09 v0.3 1, 2, many: numbersets  (ums)'
+        # Try to extract date from string
+        # NOTE: This pattern is also used in backend: Changes need to be applied in both places
+        date_pattern = r"\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|\d{4}[-/]\d{1,2}[-/]\d{1,2}"
+        date_match = re.search(date_pattern, version)
+        date_str = date_match.group() if date_match else None
+
+        # Assumes version number is followed by a space
+        number_pattern = r"\d+\.\d+(?:\.\d+)?-?(?:[a-z0-9])*\b"
+        single_number_pattern = r"(?<=v)\d" # FIXME: Problem: Trying to capture single-digit versions without leading v would capture numbers in date
+
+        number_match = re.search(number_pattern, version)
+        if number_match:
+            number = number_match.group()
+        else:
+            single_number_match = re.search(single_number_pattern, version)
+            number = single_number_match.group() if single_number_match else None
+        
+        date = None
+        try:
+            date = parser.parse(date_str).date() if date_str else None
+        except parser.ParserError:
+            try:
+                date = parser.parse(date_str, dayfirst=True).date() if date_str else None
+            except Exception as e:
+                print(f"Cannot parse {version}: {e}")
+                date = None
+
+        return {'raw': version, 'date': date, 'number': number}
+    
+    raise TypeError(f"Cannot parse {version} of type {type(version)}")
+
 
 def parse_changed_files(path_to_ctan: str) -> "list[str]":
     fpath = os.path.join(path_to_ctan, 'FILES.last07days')
@@ -150,17 +210,21 @@ def make_logger(name: str = "default", logging_level = logging.INFO):
 
     # Create a StreamHandler to write logs to stdout
     stream_handler = logging.StreamHandler(sys.stdout)
+    stream_handler.setLevel(logging_level)
 
-    # Optionally, you can set the log level for the handler
-    stream_handler.setLevel(logging.DEBUG)
+    fh = logging.FileHandler(f'log/{name}.log')
+    fh.setLevel(logging.DEBUG)
 
     # Optionally, customize the log format for the handler
     # format_string = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     format_string = '%(asctime)s - %(levelname)-8s - %(message)s'
     formatter = logging.Formatter(format_string, '%H:%M:%S')
+
+    fh.setFormatter(formatter)
     stream_handler.setFormatter(formatter)
 
     # Add the handler to the logger
+    logger.addHandler(fh)
     logger.addHandler(stream_handler)
 
     return logger

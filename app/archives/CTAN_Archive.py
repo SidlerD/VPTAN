@@ -1,3 +1,4 @@
+from typing import Optional
 from app.archives.IArchive import IArchive
 from app.helpers import helpers
 from app.schemas import Package, Version
@@ -22,7 +23,7 @@ class CTAN_Archive(IArchive):
         self._index_file = "CTAN_Archive_index.json"
         self._pkg_infos = self._get_pkg_infos()
         self._index = self._read_index_file()
-        self._logger = helpers.make_logger(name='CTANArchive', logging_level=logging.DEBUG)
+        self._logger = helpers.make_logger(name='CTANArchive', logging_level=logging.INFO)
 
     def update_index(self, skipCommits: int = 7):
         old_cwd = os.getcwd()
@@ -42,10 +43,14 @@ class CTAN_Archive(IArchive):
 
             # Only build index for hashes which are not yet in index
             hashes_to_index = [hash for hash in commit_hashes if hash not in indexed_commit_hashes]
+            if len(hashes_to_index) == 0:
+                self._logger.info("Index is already up-to-date")
+                os.chdir(old_cwd)
+                return
             self._logger.info(f"Adding {len(hashes_to_index)} hashes to index: {hashes_to_index}")
 
             # Iterate over each commit hash
-            for i, commit_hash in enumerate(commit_hashes[:100]):
+            for i, commit_hash in enumerate(commit_hashes):
                 if i%skipCommits == 0:
                     subprocess.call(['git', 'stash'])  # stash any changes
                     subprocess.call(['git', 'checkout', '--force', commit_hash])  # Checkout the commit
@@ -68,8 +73,21 @@ class CTAN_Archive(IArchive):
         self._write_index_to_file()
         
 
-    def get_commit_hash(self, pkg: Package):
-        return "2d6f89f83b7567136c3a40b3b55f9be1e06bd99e"
+    def get_commit_hash(self, pkg: Package) -> Optional[str]:
+        for hash in self._index:
+            if not self._index[hash] or not self._index[hash][pkg.id]:
+                continue
+            files = self._index[hash][pkg.id]
+            if 'Error' in files.keys():
+                continue
+            if len(files) != 1:
+                self._logger.info(f"{pkg.id} has {len(files)} files with a version: {files.values()}. Returning first one")
+            for version in files.values():
+                if helpers.version_matches(version, pkg.version):
+                    self._logger.info(f"{pkg.id} has version {pkg.version} at commit {hash}")
+                    return hash
+
+        return None
 
     def _get_pkg_infos(self):
         # ASSUMPTION: Every package's files are stored in a folder with pkg_name
@@ -154,7 +172,7 @@ class CTAN_Archive(IArchive):
             
             if not exists(pkg_dir):
                 self._logger.debug(f"{pkg.id} should be at {pkg_dir}, which doesn't exist.")
-                self._index[commit_hash][pkg.id]["Error"] = f"{pkg.id} should be at {pkg_dir}, which doesn't exist."
+                # self._index[commit_hash][pkg.id]["Error"] = f"{pkg.id} should be at {pkg_dir}, which doesn't exist."
                 continue
                 
             # Case where Ctan.path is a file, not a folder
@@ -240,5 +258,24 @@ class CTAN_Archive(IArchive):
 
 if __name__ == '__main__':
     hist = CTAN_Archive(ctan_archive_path="/root/CTAN")
+
+    # for hash in hist._index:
+    #     if hist._index[hash]:
+    #         pkgs = hist._index[hash]
+    #         for pkg in pkgs:
+    #             # newpkg = {}
+    #             # for file in pkgs[pkg]:
+    #             #     newpkg[file] = helpers.parse_version(pkgs[pkg][file])
+    #             # hist._index[hash][pkg] = newpkg
+    #             hist._index[hash][pkg] = pkgs[pkg][pkg]
+
+    # with open(hist._index_file, 'w') as f:
+    #     json.dump(hist._index, f, default=str, indent=2)
     # hist = CTANHistory(ctan_archive_path=r"\\wsl.localhost\UbuntuG\root\CTAN")
-    hist.update_index()
+
+    vers = Version(date="2020-01-20")
+    pkg = Package(id="amsmath", version=vers, name="amsmath")
+    hist.get_commit_hash(pkg)
+
+
+    # hist.update_index()
