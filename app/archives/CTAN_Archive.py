@@ -273,9 +273,9 @@ if __name__ == '__main__':
     #     json.dump(hist._index, f, default=str, indent=2)
     # hist = CTANHistory(ctan_archive_path=r"\\wsl.localhost\UbuntuG\root\CTAN")
 
-    # vers = Version(date="2020-01-20")
-    # pkg = Package(id="amsmath", version=vers, name="amsmath")
-    # hist.get_commit_hash(pkg)
+    vers = Version(date="2020-01-20")
+    pkg = Package(id="amsmath", version=vers, name="amsmath")
+    hist.get_commit_hash(pkg)
 
 
     # hist.update_index()
