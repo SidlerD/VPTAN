@@ -23,9 +23,11 @@ class CTAN_Archive(IArchive):
         self._index_file = "CTAN_Archive_index.json"
         self._pkg_infos = self._get_pkg_infos()
         self._index = self._read_index_file()
-        self._logger = helpers.make_logger(name='CTANArchive', logging_level=logging.INFO)
+        self._index_logger = helpers.make_logger(name='CTANArchive', logging_level=logging.INFO)
+        self._download_logger = helpers.make_logger(name='api_get_packages', logging_level=logging.INFO)
 
     def update_index(self, skipCommits: int = 7):
+        self._index_logger.info("Updating index")
         old_cwd = os.getcwd()
         os.chdir(self._ctan_path)
         
@@ -39,15 +41,15 @@ class CTAN_Archive(IArchive):
 
             commit_hashes = subprocess.check_output(['git', 'rev-list', 'HEAD'], cwd=self._ctan_path).decode().splitlines()
 
-            indexed_commit_hashes = self._index.keys()
+            indexed_commit_hashes = [hash for hash in self._index.keys() if self._index[hash]]
 
             # Only build index for hashes which are not yet in index
             hashes_to_index = [hash for hash in commit_hashes if hash not in indexed_commit_hashes]
             if len(hashes_to_index) == 0:
-                self._logger.info("Index is already up-to-date")
+                self._index_logger.info("Index is already up-to-date")
                 os.chdir(old_cwd)
                 return
-            self._logger.info(f"Adding {len(hashes_to_index)} hashes to index: {hashes_to_index}")
+            self._index_logger.info(f"Adding {len(hashes_to_index)} hashes to index: {hashes_to_index}")
 
             # Iterate over each commit hash
             for i, commit_hash in enumerate(commit_hashes):
@@ -57,16 +59,16 @@ class CTAN_Archive(IArchive):
                     try:
                             self._build_index_for_hash(commit_hash)
                     except Exception as e:
-                        self._logger.error(f"unexpected error at commit {commit_hash}: {e}")
+                        self._index_logger.error(f"unexpected error at commit {commit_hash}: {e}")
                         logging.exception(e)
                 else:
                     self._index[commit_hash] = None
-                    self._logger.info(f"Skipping commit {commit_hash}")
+                    self._index_logger.info(f"Skipping commit {commit_hash}")
 
-            self._logger.info("All commit-hashes done")
+            self._index_logger.info("All commit-hashes done")
     
         except Exception as e:
-            self._logger.error(str(e))
+            self._index_logger.error(str(e))
             logging.exception(e)
 
         os.chdir(old_cwd)
@@ -81,10 +83,10 @@ class CTAN_Archive(IArchive):
             if 'Error' in files.keys():
                 continue
             if len(files) != 1:
-                self._logger.info(f"{pkg.id} has {len(files)} files with a version: {files.values()}. Returning first one")
+                self._index_logger.info(f"{pkg.id} has {len(files)} files with a version: {files.values()}. Returning first one")
             for version in files.values():
                 if helpers.version_matches(version, pkg.version):
-                    self._logger.info(f"{pkg.id} has version {pkg.version} at commit {hash}")
+                    self._index_logger.info(f"{pkg.id} has version {pkg.version} at commit {hash}")
                     return hash
 
         return None
@@ -140,7 +142,7 @@ class CTAN_Archive(IArchive):
             with open(self._index_file, "w") as indexf:
                 indexf.write(json.dumps(self._index, default=lambda elem: elem.__dict__))
         
-        self._logger.info("Wrote index to file")
+        self._index_logger.info("Wrote index to file")
 
     def _build_index_for_hash(self, commit_hash):
         """"""
@@ -148,13 +150,13 @@ class CTAN_Archive(IArchive):
         if curr_hash != commit_hash:
             raise ValueError(f"Building index for {commit_hash}, but git-repo is at {curr_hash}")
         
-        self._logger.info(f"Building index for {commit_hash}")
+        self._index_logger.info(f"Building index for {commit_hash}")
         changed_files = helpers.parse_changed_files(self._ctan_path)
         changed_dirs = set(os.path.split(file)[0] for file in changed_files)
 
         for pkg in self._pkg_infos: # For each package:
             if not pkg.ctan or not pkg.ctan.path:
-                self._logger.debug(f"{pkg.id} has no path on ctan. Skipping")
+                self._index_logger.debug(f"{pkg.id} has no path on ctan. Skipping")
                 continue
             pkg.ctan.path = pkg.ctan.path.lstrip(os.path.sep) 
             pkg_dir = join(self._ctan_path, pkg.ctan.path)
@@ -162,16 +164,16 @@ class CTAN_Archive(IArchive):
             # Only extract version for pkgs whose files have changed, except for first commit
             if len(self._index) > 1:
                 if isfile(pkg_dir) and pkg.ctan.path not in changed_files:
-                    self._logger.debug(f"{pkg.id} has not changed")
+                    self._index_logger.debug(f"{pkg.id} has not changed")
                     continue    
                 if isdir(pkg_dir) and pkg.ctan.path not in changed_dirs:
-                    self._logger.debug(f"{pkg.id} has not changed")
+                    self._index_logger.debug(f"{pkg.id} has not changed")
                     continue    
             
             found = False
             
             if not exists(pkg_dir):
-                self._logger.debug(f"{pkg.id} should be at {pkg_dir}, which doesn't exist.")
+                self._index_logger.debug(f"{pkg.id} should be at {pkg_dir}, which doesn't exist.")
                 # self._index[commit_hash][pkg.id]["Error"] = f"{pkg.id} should be at {pkg_dir}, which doesn't exist."
                 continue
                 
@@ -202,7 +204,7 @@ class CTAN_Archive(IArchive):
                 try:
                     helpers.install_file(ins_file)
                 except Exception as e:
-                    self._logger.warning(f'Problem while installing {ins_file}: {e}')
+                    self._index_logger.warning(f'Problem while installing {ins_file}: {e}')
                     continue
 
                 _relevant_files = helpers.get_relevant_files(pkg_dir, pkg, sty_cls=True, ins=False, dtx=False)
@@ -221,7 +223,7 @@ class CTAN_Archive(IArchive):
                 try:
                     helpers.install_file(dtx_file)
                 except Exception as e:
-                    self._logger.warning(f'Problem while installing {dtx_file}: {e}')
+                    self._index_logger.warning(f'Problem while installing {dtx_file}: {e}')
                 _relevant_files = helpers.get_relevant_files(pkg_dir, pkg, sty_cls=True, ins=False, dtx=False)
                 # Try to extract versions from pkg_name.sty/.cls
                 for file in _relevant_files['sty/cls']:
@@ -231,7 +233,7 @@ class CTAN_Archive(IArchive):
                     break
             
             if not found:
-                self._logger.info(f'WARNING: Couldnt find any version for {pkg.name}. Files: {[basename(file) for file in os.listdir(pkg_dir)]}')
+                self._index_logger.info(f'WARNING: Couldnt find any version for {pkg.name}. Files: {[basename(file) for file in os.listdir(pkg_dir)]}')
                 self._index[commit_hash][pkg.id]["Error"] = "No version found"
 
     
@@ -243,7 +245,12 @@ class CTAN_Archive(IArchive):
         # Build url where package files are found
         base_url = "https://git.texlive.info/CTAN/plain"
         commit_hash = self.get_commit_hash(pkg)
+        if not commit_hash:
+            self._download_logger.debug(f"{pkg.id} ({pkg.version}) is not in CTAN Archive")
+            return False
+        
         overview_url =f"{base_url}{pkg.ctan.path}?id={commit_hash}"
+        self._download_logger.info(f"CTAN Archive: Downloading {pkg.id} ({pkg.version}) from {overview_url}")
 
         # Extract download-links for each individual file
         page = requests.get(overview_url)  
@@ -252,7 +259,7 @@ class CTAN_Archive(IArchive):
         urls = [urljoin(base_url, elem['href']) for elem in a_tags if elem.text != "../"]
 
         # Download each file, return as binary zip-file
-        self._logger.info(f"Downloading {len(urls)} files from {overview_url}")
+        self._download_logger.info(f"Downloading {len(urls)} files from {overview_url}")
         return helpers.download_files_to_binary_zip(urls, pkg.id)
 
 
