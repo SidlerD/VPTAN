@@ -23,8 +23,8 @@ class CTAN_Archive(IArchive):
         self._index_file = "CTAN_Archive_index.json"
         self._pkg_infos = self._get_pkg_infos()
         self._index = self._read_index_file()
-        self._index_logger = helpers.make_logger(name='CTANArchive', logging_level=logging.INFO)
-        self._download_logger = helpers.make_logger(name='api_get_packages', logging_level=logging.INFO)
+        self._index_logger = helpers.make_logger(name='CTANArchive')
+        self._download_logger = helpers.make_logger(name='api_get_packages')
 
     def update_index(self, skipCommits: int = 7):
         self._index_logger.info("Updating index")
@@ -41,7 +41,7 @@ class CTAN_Archive(IArchive):
 
             commit_hashes = subprocess.check_output(['git', 'rev-list', 'HEAD'], cwd=self._ctan_path).decode().splitlines()
 
-            indexed_commit_hashes = [hash for hash in self._index.keys() if self._index[hash]]
+            indexed_commit_hashes = [hash for hash in self._index.keys()]
 
             # Only build index for hashes which are not yet in index
             hashes_to_index = [hash for hash in commit_hashes if hash not in indexed_commit_hashes]
@@ -52,7 +52,7 @@ class CTAN_Archive(IArchive):
             self._index_logger.info(f"Adding {len(hashes_to_index)} hashes to index: {hashes_to_index}")
 
             # Iterate over each commit hash
-            for i, commit_hash in enumerate(commit_hashes):
+            for i, commit_hash in enumerate(hashes_to_index):
                 if i%skipCommits == 0:
                     subprocess.call(['git', 'stash'])  # stash any changes
                     subprocess.call(['git', 'checkout', '--force', commit_hash])  # Checkout the commit
@@ -140,7 +140,7 @@ class CTAN_Archive(IArchive):
             logging.exception(e)
             # print(self._index)
             with open(self._index_file, "w") as indexf:
-                indexf.write(json.dumps(self._index, default=lambda elem: elem.__dict__))
+                indexf.write(json.dumps(self._index, default=lambda elem: str(elem)))
         
         self._index_logger.info("Wrote index to file")
 
@@ -150,10 +150,13 @@ class CTAN_Archive(IArchive):
         if curr_hash != commit_hash:
             raise ValueError(f"Building index for {commit_hash}, but git-repo is at {curr_hash}")
         
-        self._index_logger.info(f"Building index for {commit_hash}")
         changed_files = helpers.parse_changed_files(self._ctan_path)
         changed_dirs = set(os.path.split(file)[0] for file in changed_files)
+        self._index_logger.info(f"Building index for {commit_hash}. Changed dirs: {changed_dirs}")
 
+        # Make sure we can write to index at commit hash
+        if not self._index[commit_hash]:
+            self._index[commit_hash] = defaultdict(lambda: defaultdict(dict))
         for pkg in self._pkg_infos: # For each package:
             if not pkg.ctan or not pkg.ctan.path:
                 self._index_logger.debug(f"{pkg.id} has no path on ctan. Skipping")
@@ -280,9 +283,11 @@ if __name__ == '__main__':
     #     json.dump(hist._index, f, default=str, indent=2)
     # hist = CTANHistory(ctan_archive_path=r"\\wsl.localhost\UbuntuG\root\CTAN")
 
-    vers = Version(date="2020-01-20")
-    pkg = Package(id="amsmath", version=vers, name="amsmath")
-    hist.get_commit_hash(pkg)
+    # vers = Version(date="2020-01-20")
+    # pkg = Package(id="amsmath", version=vers, name="amsmath")
+    # hist.get_commit_hash(pkg)
 
 
     # hist.update_index()
+    os.chdir(hist._ctan_path)
+    hist._build_index_for_hash('fdd3c58e8e5b37dcf9affd49326899988992c074')

@@ -12,6 +12,7 @@ from typing import TypedDict
 from dateutil import parser
 
 import requests
+from app.helpers import helpers
 
 from app.schemas import Package, Version
 
@@ -141,7 +142,7 @@ def install_file(file: str):
 
 def extract_version_from_file(fpath: str, pkg_id: str, index: defaultdict, commit_hash: str) -> bool:
     try:
-        content, pkg_version = '', None
+        content, version_str = '', None
         # Read file
         try:
             with open(fpath, "r") as f:
@@ -156,20 +157,22 @@ def extract_version_from_file(fpath: str, pkg_id: str, index: defaultdict, commi
             for regex in [reg_patterns['pkg'], reg_patterns['expl_pkg']]:
                 match = re.search(regex['reg'], content)
                 if match:
-                    pkg_version = match.group(regex['version']) 
+                    version_str = match.group(regex['version']) 
                     break
         elif fpath.endswith('.cls'):
             for regex in [reg_patterns['cls'], reg_patterns['expl_cls'], reg_patterns['file']]:
                 match = re.search(regex['reg'], content)
                 if match:
-                    pkg_version = match.group(regex['version']) 
+                    version_str = match.group(regex['version']) 
                     break
 
-        if not pkg_version:
+        if not version_str:
             return False
+        
+        version = helpers.parse_version(version_str)
          
-        index[commit_hash][pkg_id][basename(fpath)] = pkg_version
-        print(f"{pkg_id}: {pkg_version}")
+        index[commit_hash][pkg_id][basename(fpath)] = version
+        print(f"{pkg_id}: {version_str}")
         return True
 
 
@@ -200,17 +203,17 @@ def get_relevant_files(subdir: str, pkg: Package, sty_cls = True, ins = True, dt
     return relevant_files
 
 
-def make_logger(name: str = "default", logging_level = logging.INFO):
+def make_logger(name: str = "default"):
     logger = logging.getLogger(name)
     if logger.handlers: # Logger already existed
         return logger # FIXME: Remove handler instead of return. Otherwise log-level might be wrong
 
-    logger.setLevel(logging_level)  # Set the desired log level
+    logger.setLevel(logging.DEBUG)  # Set the desired log level
     logger.propagate = 0
 
     # Create a StreamHandler to write logs to stdout
     stream_handler = logging.StreamHandler(sys.stdout)
-    stream_handler.setLevel(logging_level)
+    stream_handler.setLevel(logging.INFO)
 
     fh = logging.FileHandler(f'log/{name}.log')
     fh.setLevel(logging.DEBUG)
