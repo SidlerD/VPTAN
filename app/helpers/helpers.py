@@ -122,7 +122,6 @@ def download_files_to_binary_zip(file_urls: "list[str]", pkg_id: str) -> bytes:
 
 
 def install_file(file: str):
-    # TODO: Change into dir of file here and then back out again
     path, fname = os.path.split(file)
     old_cwd = os.getcwd()
     os.chdir(abspath(path))
@@ -184,11 +183,16 @@ def extract_version_from_file(fpath: str, pkg_id: str, index: defaultdict, commi
 
 def get_relevant_files(subdir: str, pkg: Package, sty_cls = True, ins = True, dtx = True):
     relevant_files = {'sty/cls': [], 'ins': [], 'dtx': []}
-    isolated = basename(subdir) == pkg.id or basename(subdir) == pkg.name
-    """If pkg has its own folder, all dtx/ins-files should be installed. If not (e.g. trace, which is in required/tools with other packages), only files named with pkg.id or pkg.name should be installed."""
-    if subdir and os.path.islink(subdir): # FIXME: This doesn't work on Windows, only on Linux
+
+    pkg_in_isolated_folder = basename(subdir) == pkg.id or basename(subdir) == pkg.name
+    """ If pkg has its own folder, all dtx/ins-files should be installed. 
+        If not (e.g. trace, which is in required/tools with other packages), 
+        only files named with pkg.id or pkg.name should be installed.
+    """
+    
+    if subdir and os.path.islink(subdir): 
         print(subdir + " is a symlink, resolving now")
-        # FIXME: For something like a4, this returns a simple folder name (i.e. relative path) instead of the full path
+        # TODO: Check if this works for e.g. a4 or other symlinked packages. See if os.walk finds the files
         subdir = os.readlink(subdir)
         print("subdir is now " + subdir)
     # Get relevant files in all subdirs. followlinks=True because for some packages, the package folder is a symlink, e.g. a4
@@ -196,9 +200,9 @@ def get_relevant_files(subdir: str, pkg: Package, sty_cls = True, ins = True, dt
         for file in files:
             if sty_cls and file in [f"{pkg.name}.sty", f"{pkg.name}.cls", f"{pkg.id}.sty", f"{pkg.id}.cls"]:
                 relevant_files['sty/cls'].append(join(path, file))
-            elif ins and (isolated and file.endswith('.ins') or not isolated and file in [f"{pkg.id}.ins",f"{pkg.name}.ins"] ):
+            elif ins and (pkg_in_isolated_folder and file.endswith('.ins') or not pkg_in_isolated_folder and file in [f"{pkg.id}.ins",f"{pkg.name}.ins"] ):
                 relevant_files['ins'].insert(0 if basename(file).startswith(pkg.name) or basename(file).startswith(pkg.id) else -1, join(path, file))
-            elif dtx and (isolated and file.endswith('.dtx') or not isolated and file in [f"{pkg.id}.dtx",f"{pkg.name}.dtx"] ):
+            elif dtx and (pkg_in_isolated_folder and file.endswith('.dtx') or not pkg_in_isolated_folder and file in [f"{pkg.id}.dtx",f"{pkg.name}.dtx"] ):
                 relevant_files['dtx'].insert(0 if basename(file).startswith(pkg.name) or basename(file).startswith(pkg.id) else -1, join(path, file))
     return relevant_files
 
@@ -206,20 +210,22 @@ def get_relevant_files(subdir: str, pkg: Package, sty_cls = True, ins = True, dt
 def make_logger(name: str = "default"):
     logger = logging.getLogger(name)
     if logger.handlers: # Logger already existed
-        return logger # FIXME: Remove handler instead of return. Otherwise log-level might be wrong
+        return logger 
 
     logger.setLevel(logging.DEBUG)  # Set the desired log level
     logger.propagate = 0
 
-    # Create a StreamHandler to write logs to stdout
+    # Logging to stdout
     stream_handler = logging.StreamHandler(sys.stdout)
     stream_handler.setLevel(logging.INFO)
-
-    fh = logging.FileHandler(f'log/{name}.log')
+    
+    # Logging to .log file
+    log_file_name = 'log/{name}.log'
+    os.makedirs(os.path.dirname(log_file_name), exist_ok=True) # Make sure folder for log-file exists
+    fh = logging.FileHandler(log_file_name)
     fh.setLevel(logging.DEBUG)
 
-    # Optionally, customize the log format for the handler
-    # format_string = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    # Custom format for logs
     format_string = '%(asctime)s - %(levelname)-8s - %(message)s'
     formatter = logging.Formatter(format_string, '%H:%M:%S')
 
