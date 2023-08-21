@@ -152,7 +152,7 @@ class CTAN_Archive(IArchive):
         
         changed_files = helpers.parse_changed_files(self._ctan_path)
         changed_dirs = set(os.path.split(file)[0] for file in changed_files)
-        self._index_logger.info(f"Building index for {commit_hash}. Changed dirs: {changed_dirs}")
+        self._index_logger.info(f"Building index for {commit_hash}. {len(changed_dirs)} changed dirs")
 
         # Make sure we can write to index at commit hash
         if not self._index[commit_hash]:
@@ -164,7 +164,7 @@ class CTAN_Archive(IArchive):
             pkg.ctan.path = pkg.ctan.path.lstrip(os.path.sep) 
             pkg_dir = join(self._ctan_path, pkg.ctan.path)
 
-            # Only extract version for pkgs whose files have changed, except for first commit
+            # Skip packages that haven't changed, except for first commit
             if len(self._index) > 1:
                 if isfile(pkg_dir) and pkg.ctan.path not in changed_files:
                     self._index_logger.debug(f"{pkg.id} has not changed")
@@ -290,4 +290,5 @@ if __name__ == '__main__':
 
     # hist.update_index()
     os.chdir(hist._ctan_path)
-    hist._build_index_for_hash('fdd3c58e8e5b37dcf9affd49326899988992c074')
+    hist._build_index_for_hash('094234b56c200ad35a041aa579c18cbcac8933ed')
+    # helpers.extract_version_from_file("/root/CTAN/macros/latex/contrib/lipsum/lipsum.sty", "lipsum", {}, "hasd")

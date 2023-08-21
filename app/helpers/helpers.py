@@ -158,12 +158,29 @@ def extract_version_from_file(fpath: str, pkg_id: str, index: defaultdict, commi
                 match = re.search(regex['reg'], content)
                 if match:
                     version_str = match.group(regex['version']) 
+
+                    # If version_str is a variable (e.g. \filedate), find definition of variable in sty-file and use that 
+                    for variable in re.findall(r'\\(?!n)[^\\]+', version_str):
+                        pattern = r'\\def%s\{(.*?)\}' %re.escape(variable)
+                        version_match = re.search(pattern, content)
+                        if version_match:
+                            version_str = version_str.replace(variable, " " + version_match.group(1) + " ")
+                            logger.debug(f"Substituted {version_match.group(1)} for {variable} in {basename(fpath)}")
                     break
+        
         elif fpath.endswith('.cls'):
             for regex in [reg_patterns['cls'], reg_patterns['expl_cls'], reg_patterns['file']]:
                 match = re.search(regex['reg'], content)
                 if match:
                     version_str = match.group(regex['version']) 
+                    
+                    # If version_str is a variable (e.g. \filedate), find definition of variable in sty-file and use that 
+                    for variable in re.findall(r'\\(?!n)[^\\]+', version_str):
+                        pattern = r'\\def%s\{(.*?)\}' %re.escape(variable)
+                        version_match = re.search(pattern, content)
+                        if version_match:
+                            version_str = version_str.replace(variable, " " + version_match.group(1) + " ")
+                            logger.debug(f"Substituted {version_match.group(1)} for {variable} in {basename(fpath)}")
                     break
 
         if not version_str:
@@ -231,3 +248,5 @@ def make_logger(name: str = "default"):
     logger.addHandler(stream_handler)
 
     return logger
+
+logger = make_logger()

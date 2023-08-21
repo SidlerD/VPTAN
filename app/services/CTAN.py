@@ -20,7 +20,8 @@ def download_pkg(pkg: Package) -> bytes:
     
     elif pkg.ctan:
         path = pkg.ctan.path
-        url = f"https://mirror.ctan.org/tex-archive/{path}{'' if '.' in path else '.zip' }"
+        # url = f"https://mirror.ctan.org/tex-archive{path}{'' if '.' in path else '.zip' }"
+        url = f"https://mirror.ctan.org{path}{'' if '.' in path else '.zip' }"
     else:
         if pkg.id:
             raise HTTPException(status_code=400, detail={'reason': f"{pkg.id} is not downloadable", 'CTAN_response': pkg})
