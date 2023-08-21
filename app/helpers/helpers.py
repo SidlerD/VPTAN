@@ -160,7 +160,7 @@ def extract_version_from_file(fpath: str, pkg_id: str, index: defaultdict, commi
 
                     # If version_str is a variable (e.g. \filedate), find definition of variable in sty-file and use that 
                     for variable in re.findall(r'\\(?!n)[^\\]+', version_str):
-                        pattern = r'\\def%s\{(.*?)\}' %re.escape(variable)
+                        pattern = r'\\def\s*%s\s*\{(.*?)\}' %re.escape(variable)
                         version_match = re.search(pattern, content)
                         if version_match:
                             version_str = version_str.replace(variable, " " + version_match.group(1) + " ")
@@ -175,7 +175,7 @@ def extract_version_from_file(fpath: str, pkg_id: str, index: defaultdict, commi
                     
                     # If version_str is a variable (e.g. \filedate), find definition of variable in sty-file and use that 
                     for variable in re.findall(r'\\(?!n)[^\\]+', version_str):
-                        pattern = r'\\def%s\{(.*?)\}' %re.escape(variable)
+                        pattern = r'\\def\s*%s\s*\{(.*?)\}' %re.escape(variable)
                         version_match = re.search(pattern, content)
                         if version_match:
                             version_str = version_str.replace(variable, " " + version_match.group(1) + " ")
