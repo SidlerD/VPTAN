@@ -140,7 +140,7 @@ class CTAN_Archive(IArchive):
             logging.exception(e)
             # print(self._index)
             with open(self._index_file, "w") as indexf:
-                indexf.write(json.dumps(self._index, default=lambda elem: str(elem)))
+                indexf.write(json.dumps(self._index, default=lambda elem: str(elem), indent=2))
         
         self._index_logger.info("Wrote index to file")
 
@@ -288,7 +288,7 @@ if __name__ == '__main__':
     # hist.get_commit_hash(pkg)
 
 
-    # hist.update_index()
-    os.chdir(hist._ctan_path)
-    hist._build_index_for_hash('094234b56c200ad35a041aa579c18cbcac8933ed')
+    hist.update_index()
+    # os.chdir(hist._ctan_path)
+    # hist._build_index_for_hash('094234b56c200ad35a041aa579c18cbcac8933ed')
     # helpers.extract_version_from_file("/root/CTAN/macros/latex/contrib/lipsum/lipsum.sty", "lipsum", {}, "hasd")

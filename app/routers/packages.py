@@ -23,13 +23,12 @@ def getAllPackages():
 
 logger = helpers.make_logger('api_get_packages')
 
-#TODO: Validate number (probably with regex)
 @router.get("/{pkg_id}")
 def get_package(ctan_pkg: Package = Depends(pkg_id_exists), date: Union[date, None] = Depends(valid_date), number: Union[str, None] = None):
     req_version = Version(number=number, date=date)
     logger.info(f"/pkg_id called with {ctan_pkg} in version {req_version}")
      
-     # If version = latest or requested version equal to version on CTAN: Download from CTAN
+    # If version = latest or requested version equal to version on CTAN: Download from CTAN
     if check_satisfying(ctan_pkg.version, req_version):
         byte_data = CTAN.download_pkg(ctan_pkg)
     else:
