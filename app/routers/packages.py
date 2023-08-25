@@ -24,17 +24,17 @@ def getAllPackages():
 logger = helpers.make_logger('api_get_packages')
 
 @router.get("/{pkg_id}")
-def get_package(ctan_pkg: Package = Depends(pkg_id_exists), date: Union[date, None] = Depends(valid_date), number: Union[str, None] = None):
+def get_package(ctan_pkg: Package = Depends(pkg_id_exists), date: Union[date, None] = Depends(valid_date), number: Union[str, None] = None, closest: Union[bool, None] = None):
     req_version = Version(number=number, date=date)
-    logger.info(f"/pkg_id called with {ctan_pkg} in version {req_version}")
+    logger.info(f"/pkg_id called with {ctan_pkg.id} in version {req_version}")
      
     # If version = latest or requested version equal to version on CTAN: Download from CTAN
     if check_satisfying(ctan_pkg.version, req_version):
         byte_data = CTAN.download_pkg(ctan_pkg)
     else:
         try:
-            ctan_pkg.version = req_version # Make sure we don't accidentaly use ctan_version for download
-            byte_data = ArchiveIndex.download_pkg(ctan_pkg)
+            ctan_pkg.version = req_version 
+            byte_data = ArchiveIndex.download_pkg(ctan_pkg, closest)
         except HTTPException as e:
             raise
         

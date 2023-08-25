@@ -237,7 +237,7 @@ def make_logger(name: str = "default"):
     stream_handler.setLevel(logging.INFO)
     
     # Logging to .log file
-    log_file_name = 'log/{name}.log'
+    log_file_name = f'log/{name}.log'
     os.makedirs(os.path.dirname(log_file_name), exist_ok=True) # Make sure folder for log-file exists
     fh = logging.FileHandler(log_file_name)
     fh.setLevel(logging.DEBUG)

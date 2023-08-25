@@ -9,9 +9,9 @@ from app.schemas import Package
 logger = logging.getLogger("default")
 
 CTANArch = CTAN_Archive()
-def download_pkg(pkg: Package):
+def download_pkg(pkg: Package, closest: bool):
     """Checks supported package-archives for requested package, returns zipfile of package's files"""
-    res = CTANArch.get_pkg_files(pkg)
+    res = CTANArch.get_pkg_files(pkg, closest)
     if res:
         return res
     

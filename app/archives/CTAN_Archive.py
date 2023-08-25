@@ -1,8 +1,10 @@
+import datetime
 from typing import Optional
 from app.archives.IArchive import IArchive
 from app.helpers import helpers
 from app.schemas import Package, Version
 
+from dateutil import parser
 import logging
 import os
 from os.path import abspath, join, isdir, isfile, basename, exists
@@ -75,7 +77,10 @@ class CTAN_Archive(IArchive):
         self._write_index_to_file()
         
 
-    def get_commit_hash(self, pkg: Package) -> Optional[str]:
+    def get_commit_hash(self, pkg: Package, closest: bool) -> Optional[str]:
+        """Get commit hash at which pkg has the correct version in git archive"""
+        all_versions = []
+
         for hash in self._index:
             if not self._index[hash] or not self._index[hash][pkg.id]:
                 continue
@@ -84,12 +89,39 @@ class CTAN_Archive(IArchive):
                 continue
             if len(files) != 1:
                 self._index_logger.info(f"{pkg.id} has {len(files)} files with a version: {files.values()}. Returning first one")
+            if closest:
+                all_versions.append({hash: files})
+                continue
+
             for version in files.values():
                 if helpers.version_matches(version, pkg.version):
                     self._index_logger.info(f"{pkg.id} has version {pkg.version} at commit {hash}")
                     return hash
 
+        if closest and all_versions:
+            def  get_date_from_pair(pair: dict):
+                # ASSUMPTION: Every file for one package at one commit hash has same version
+                file = pair[next(iter(pair))]
+                if 'Error' in file:
+                    return ''
+                version = file[next(iter(file))]
+                date = version['date']
+                return date if isinstance(date, datetime.date) else parser.parse(date).date()
+    
+            req_date = pkg.version.date
+            all_versions_clean = [{next(iter(pair)): get_date_from_pair(pair)} for pair in all_versions]
+
+            # later_versions = filter(lambda pair: self.get_date_from_pair(pair) >= req_date, all_versions)
+            # closest_later = min(later_versions, key = lambda pair: self.get_date_from_pair(pair))
+            later_versions = filter(lambda pair: pair[next(iter(pair))] >= req_date, all_versions_clean)
+            closest_later = min(later_versions, key = lambda pair: pair[next(iter(pair))])
+
+            self._download_logger.info(f"For {pkg.id}({pkg.version.date}): Closest version is {closest_later}")
+            return next(iter(closest_later))
         return None
+    
+        # TODO: Could check the date of each commit in archive, and then take the hash which is one day after req_date
+        # https://stackoverflow.com/questions/50452866/how-to-show-date-and-time-of-a-commit-by-hash#:~:text=git%20show%20%2D%2Dno%2Dpatch%20%2D%2Dno%2Dnotes%20%2D%2Dpretty%3D%27%25cd%27%20fe1ddcdef
 
     def _get_pkg_infos(self):
         # ASSUMPTION: Every package's files are stored in a folder with pkg_name
@@ -240,14 +272,14 @@ class CTAN_Archive(IArchive):
                 self._index[commit_hash][pkg.id]["Error"] = "No version found"
 
     
-    def get_pkg_files(self, pkg: Package) -> bytes:
+    def get_pkg_files(self, pkg: Package, closest: bool) -> bytes:
         """Returns zip-file of package's files in byte format"""
         if not pkg.ctan or not pkg.ctan.path:
             raise NotImplementedError("Can only download packages where I know the ctan path")
         
         # Build url where package files are found
         base_url = "https://git.texlive.info/CTAN/plain"
-        commit_hash = self.get_commit_hash(pkg)
+        commit_hash = self.get_commit_hash(pkg, closest)
         if not commit_hash:
             self._download_logger.debug(f"{pkg.id} ({pkg.version}) is not in CTAN Archive")
             return False
