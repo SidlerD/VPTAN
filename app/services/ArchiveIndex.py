@@ -15,4 +15,4 @@ def download_pkg(pkg: Package):
     if res:
         return res
     
-    raise HTTPException(status_code=404, detail=f"{pkg.name} is not available in version {pkg.version}")
+    raise HTTPException(status_code=404, detail=f"{pkg.name} is not available in version {pkg.version} on VPTAN")
