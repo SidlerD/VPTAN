@@ -1,0 +1,346 @@
+[
+  {
+    "name": "apa5",
+    "id": "apa5",
+    "aliased_by": {
+      "id": "apa",
+      "name": "apa"
+    }
+  },
+  {
+    "name": "lithuanian-babel",
+    "id": "lithuanian-babel",
+    "aliased_by": {
+      "id": "babel-lithuanian",
+      "name": "babel-lithuanian"
+    }
+  },
+  {
+    "name": "spanish",
+    "id": "spanish",
+    "aliased_by": {
+      "id": "babel-spanish",
+      "name": "babel-spanish"
+    }
+  },
+  {
+    "name": "bibtex8bit",
+    "id": "bibtex8bit",
+    "aliased_by": {
+      "id": "bibtex8",
+      "name": "bibtex8"
+    }
+  },
+  {
+    "name": "boxedminipage2e",
+    "id": "boxedminipage2e",
+    "aliased_by": {
+      "id": "boxedminipage",
+      "name": "boxedminipage"
+    }
+  },
+  {
+    "name": "polishlipsum",
+    "id": "polishlipsum",
+    "aliased_by": {
+      "id": "bredzenie",
+      "name": "bredzenie"
+    }
+  },
+  {
+    "name": "brief-t",
+    "id": "brief_t",
+    "aliased_by": {
+      "id": "brief-t",
+      "name": "brief-t"
+    }
+  },
+  {
+    "name": "ccref",
+    "id": "ccref",
+    "aliased_by": {
+      "id": "crefthe",
+      "name": "crefthe"
+    }
+  },
+  {
+    "name": "ghyphen",
+    "id": "ghyphen",
+    "aliased_by": {
+      "id": "dehyph",
+      "name": "dehyph"
+    }
+  },
+  {
+    "name": "gnhyph",
+    "id": "gnhyph",
+    "aliased_by": {
+      "id": "dehyph",
+      "name": "dehyph"
+    }
+  },
+  {
+    "name": "DVIView",
+    "id": "dviview",
+    "aliased_by": {
+      "id": "dvivue",
+      "name": "DVIVue"
+    }
+  },
+  {
+    "name": "neo-euler",
+    "id": "neo-euler",
+    "aliased_by": {
+      "id": "euler-math",
+      "name": "euler-math"
+    }
+  },
+  {
+    "name": "firefox-ctan-plugins",
+    "id": "firefox_ctan_plugins",
+    "aliased_by": {
+      "id": "firefox-ctan-plugins",
+      "name": "firefox-ctan-plugins"
+    }
+  },
+  {
+    "name": "jpgfdraw",
+    "id": "jpgfdraw",
+    "aliased_by": {
+      "id": "flowframtk",
+      "name": "FlowframTk"
+    }
+  },
+  {
+    "name": "autoinst",
+    "id": "autoinst",
+    "aliased_by": {
+      "id": "fontools",
+      "name": "fontools"
+    }
+  },
+  {
+    "name": "gentium",
+    "id": "gentium",
+    "aliased_by": {
+      "id": "gentium-tug",
+      "name": "gentium-tug"
+    }
+  },
+  {
+    "name": "letterformat",
+    "id": "letterformat",
+    "aliased_by": {
+      "id": "knuth-letter",
+      "name": "knuth-letter"
+    }
+  },
+  {
+    "name": "llmk",
+    "id": "llmk",
+    "aliased_by": {
+      "id": "light-latex-make",
+      "name": "Light LaTeX Make"
+    }
+  },
+  {
+    "name": "lmodern",
+    "id": "lmodern",
+    "aliased_by": {
+      "id": "lm",
+      "name": "lm"
+    }
+  },
+  {
+    "name": "findfont",
+    "id": "findfont",
+    "aliased_by": {
+      "id": "luafindfont",
+      "name": "luafindfont"
+    }
+  },
+  {
+    "name": "psnfssx-luc",
+    "id": "psnfssx-luc",
+    "aliased_by": {
+      "id": "lucidabr",
+      "name": "lucidabr"
+    }
+  },
+  {
+    "name": "mathalfa",
+    "id": "mathalfa",
+    "aliased_by": {
+      "id": "mathalpha",
+      "name": "mathalpha"
+    }
+  },
+  {
+    "name": "Metafont",
+    "id": "mf",
+    "aliased_by": {
+      "id": "metafont",
+      "name": "Metafont"
+    }
+  },
+  {
+    "name": "newcm",
+    "id": "newcm",
+    "aliased_by": {
+      "id": "newcomputermodern",
+      "name": "NewComputerModern"
+    }
+  },
+  {
+    "name": "xput",
+    "id": "xput",
+    "aliased_by": {
+      "id": "pagelayout",
+      "name": "pagelayout"
+    }
+  },
+  {
+    "name": "pdftex-oztex",
+    "id": "pdftex_oztex",
+    "aliased_by": {
+      "id": "pdftex-oztex",
+      "name": "pdftex-oztex"
+    }
+  },
+  {
+    "name": "TikZ",
+    "id": "tikz",
+    "aliased_by": {
+      "id": "pgf",
+      "name": "pgf"
+    }
+  },
+  {
+    "name": "pstricks",
+    "id": "pstricks",
+    "aliased_by": {
+      "id": "pstricks-base",
+      "name": "pstricks-base"
+    }
+  },
+  {
+    "name": "scrarticle",
+    "id": "scrarticle",
+    "aliased_by": {
+      "id": "scrartcl",
+      "name": "scrartcl"
+    }
+  },
+  {
+    "name": "scrreport",
+    "id": "scrreport",
+    "aliased_by": {
+      "id": "scrreprt",
+      "name": "scrreprt"
+    }
+  },
+  {
+    "name": "slatex-scheme",
+    "id": "slatex_scheme",
+    "aliased_by": {
+      "id": "slatex-scheme",
+      "name": "slatex-scheme"
+    }
+  },
+  {
+    "name": "softmaker-freefont",
+    "id": "softmaker-freefont",
+    "aliased_by": {
+      "id": "softmakerfreefont",
+      "name": "softmakerfreefont"
+    }
+  },
+  {
+    "name": "soulutf8",
+    "id": "soulutf8",
+    "aliased_by": {
+      "id": "soul",
+      "name": "soul"
+    }
+  },
+  {
+    "name": "tabto",
+    "id": "tabto",
+    "aliased_by": {
+      "id": "tabto-ltx",
+      "name": "tabto-ltx"
+    }
+  },
+  {
+    "name": "TeX Converter",
+    "id": "tex_converter",
+    "aliased_by": {
+      "id": "tex-converter",
+      "name": "TeX Converter"
+    }
+  },
+  {
+    "name": "tex-it",
+    "id": "tex_it",
+    "aliased_by": {
+      "id": "tex-it",
+      "name": "tex-it"
+    }
+  },
+  {
+    "name": "findpkg",
+    "id": "findpkg",
+    "aliased_by": {
+      "id": "texfindpkg",
+      "name": "TeXFindPkg"
+    }
+  },
+  {
+    "name": "texlog-extract",
+    "id": "texlog_extract",
+    "aliased_by": {
+      "id": "texlog-extract",
+      "name": "texlog-extract"
+    }
+  },
+  {
+    "name": "ltugboat",
+    "id": "ltugboat",
+    "aliased_by": {
+      "id": "tugboat",
+      "name": "tugboat"
+    }
+  },
+  {
+    "name": "wasy2",
+    "id": "wasy2",
+    "aliased_by": {
+      "id": "wasy",
+      "name": "wasy"
+    }
+  },
+  {
+    "name": "wasy2-ps",
+    "id": "wasy2-ps",
+    "aliased_by": {
+      "id": "wasy-type1",
+      "name": "wasy-type1"
+    }
+  },
+  {
+    "name": "xintexpr",
+    "id": "xintexpr",
+    "aliased_by": {
+      "id": "xint",
+      "name": "xint"
+    }
+  },
+  {
+    "name": "StartLaTeX2e",
+    "id": "startlatex2e",
+    "aliased_by": {
+      "id": "yet-another-guide-latex2e",
+      "name": "Yet-Another-Guide-LaTeX2e"
+    }
+  }
+]
