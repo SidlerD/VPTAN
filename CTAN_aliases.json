@@ -64,16 +64,16 @@
     }
   },
   {
-    "name": "ghyphen",
-    "id": "ghyphen",
+    "name": "gnhyph",
+    "id": "gnhyph",
     "aliased_by": {
       "id": "dehyph",
       "name": "dehyph"
     }
   },
   {
-    "name": "gnhyph",
-    "id": "gnhyph",
+    "name": "ghyphen",
+    "id": "ghyphen",
     "aliased_by": {
       "id": "dehyph",
       "name": "dehyph"

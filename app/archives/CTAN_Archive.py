@@ -28,7 +28,7 @@ class CTAN_Archive(IArchive):
         self._index_logger = helpers.make_logger(name='CTANArchive')
         self._download_logger = helpers.make_logger(name='api_get_packages')
 
-    def update_index(self, skipCommits: int = 7):
+    def update_index(self, inspect_every_nth_commit: int = 7):
         self._index_logger.info("Updating index")
         old_cwd = os.getcwd()
         os.chdir(self._ctan_path)
@@ -55,7 +55,7 @@ class CTAN_Archive(IArchive):
 
             # Iterate over each commit hash
             for i, commit_hash in enumerate(hashes_to_index):
-                if i%skipCommits == 0:
+                if i%inspect_every_nth_commit == 0:
                     subprocess.call(['git', 'stash'])  # stash any changes
                     subprocess.call(['git', 'checkout', '--force', commit_hash])  # Checkout the commit
                     try:
