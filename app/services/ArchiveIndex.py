@@ -2,16 +2,16 @@ import io
 import logging
 
 from fastapi import HTTPException
-from app.archives.CTAN_Archive import CTAN_Archive
+from app.archives.CTAN_historical_git import CTAN_historical_git
 
 from app.schemas import Package
 
 logger = logging.getLogger("default")
 
-CTANArch = CTAN_Archive()
+CTAN_hist = CTAN_historical_git()
 def download_pkg(pkg: Package, closest: bool):
     """Checks supported package-archives for requested package, returns zipfile of package's files"""
-    res = CTANArch.get_pkg_files(pkg, closest)
+    res = CTAN_hist.get_pkg_files(pkg, closest)
     if res:
         return res
     

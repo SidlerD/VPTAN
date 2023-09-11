@@ -1,11 +1,8 @@
 import datetime as dt
 from typing import Optional, Union
-from pydantic import BaseModel, model_validator, root_validator
+# from pydantic import BaseModel, model_validator, root_validator
+import pydantic
 from dateutil import parser
-
-class Version(BaseModel):
-    number: Optional[str] = None
-    date: Optional[Union[str, dt.date]] = None
     
     # @model_validator(mode='before')
     # def parse_date(cls, data):
@@ -25,10 +22,14 @@ class Version(BaseModel):
     #         return self
     #     raise ValueError('Version.date needs to be of type datetime.date')
 
-class _Ctan(BaseModel):
+class Version(pydantic.BaseModel):
+    number: Optional[str] = None
+    date: Optional[Union[str, dt.date]] = None
+
+class _Ctan(pydantic.BaseModel):
     path: str
 
-class Package(BaseModel):
+class Package(pydantic.BaseModel):
     id: str
     name: str
     version: Optional[Version] = None

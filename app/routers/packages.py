@@ -2,12 +2,10 @@ from datetime import date
 import io
 from typing import Union
 from fastapi import APIRouter, Depends, Response, HTTPException
-from fastapi.responses import StreamingResponse
-import requests
 from app.helpers import helpers
 
 from app.services import ArchiveIndex
-from app.services import CTAN
+from app.archives import CTAN
 from ..dependencies import pkg_id_exists, valid_date
 from app.schemas import Package, Version
 
