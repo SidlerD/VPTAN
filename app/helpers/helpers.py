@@ -20,8 +20,8 @@ from app.schemas import Package, Version
 reg_patterns = {
     'pkg': {'reg': r'\\ProvidesPackage\s*\{(.*?)\}\s*(?:\[([\S\s]*?)\])?', 'version': 2, 'name': 1},  # Group 1=name, 2=version
     'cls': {'reg': r'\\ProvidesClass\s*\{(.*?)\}[^\[]*([\S\s]*?)\]', 'version': 2, 'name': 1}, 
-    'expl_pkg': {'reg': r'\\ProvidesExplPackage\s*\{(.*?)(?:\..*)?\}\s*\{(.*?)(?:\..*)?\}\s*\{(.*?)(?:\..*)?\}\s*\{(.*?)(?:\..*)?\}', 'version': 2, 'name': 1},  # Group 1=name, 2=date, 3=version, 4=description
-    'expl_cls': {'reg': r'\\ProvidesExplClass\s*\{(.*?)(?:\..*)?\}\s*\{(.*?)(?:\..*)?\}\s*\{(.*?)(?:\..*)?\}\s*\{(.*?)(?:\..*)?\}', 'version': 2, 'name': 1},  # Group 1=name, 2=date, 3=version, 4=description
+    'expl_pkg': {'reg': r'\\ProvidesExplPackage\s*\{(.*?)\}\s*\{(.*?\}\s*\{.*?)\}\s*\{(.*?)\}', 'version': 2, 'name': 1},  # Group 1=name, 2=date + version, 3=description
+    'expl_cls': {'reg': r'\\ProvidesExplClass\s*\{(.*?)\}\s*\{(.*?\}\s*\{.*?)\}\s*\{(.*?)\}', 'version': 2, 'name': 1},  # Group 1=name, 2=date + version, 3=description
     'file': {'reg': r'\\ProvidesFile\s*\{(.*?)\}\s*\[(.*?)\]', 'version': 2, 'name': 1}  # Group 1=name, 2=version
 
 }
