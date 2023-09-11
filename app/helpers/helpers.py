@@ -51,29 +51,26 @@ def parse_version(version: str) -> VersionFromIndex:
         return {'raw': version, 'date': None, 'number': None}
     
     if(type(version) == str): # e.g. '2005/05/09 v0.3 1, 2, many: numbersets  (ums)'
-        # Try to extract date from string
-        # NOTE: This pattern is also used in backend: Changes need to be applied in both places
-        date_pattern = r"\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|\d{4}[-/]\d{1,2}[-/]\d{1,2}"
-        date_match = re.search(date_pattern, version)
-        date_str = date_match.group() if date_match else None
-
         # Assumes version number is followed by a space
         number_pattern = r"\d+\.\d+(?:\.\d+)?-?(?:[a-z0-9])*\b"
         single_number_pattern = r"(?<=v)\d" # FIXME: Problem: Trying to capture single-digit versions without leading v would capture numbers in date
 
         number_match = re.search(number_pattern, version)
+        single_number_match = re.search(single_number_pattern, version)
+        
         if number_match:
             number = number_match.group()
+        elif single_number_match:
+            number = single_number_match.group()
         else:
-            single_number_match = re.search(single_number_pattern, version)
-            number = single_number_match.group() if single_number_match else None
+            number = None
         
         date = None
         try:
-            date = parser.parse(date_str).date() if date_str else None
+            date = parser.parse(version, fuzzy=True).date()
         except parser.ParserError:
             try:
-                date = parser.parse(date_str, dayfirst=True).date() if date_str else None
+                date = parser.parse(version, fuzzy=True, dayfirst=True).date()
             except Exception as e:
                 print(f"Cannot parse {version}: {e}")
                 date = None
