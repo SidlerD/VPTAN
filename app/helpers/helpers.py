@@ -19,10 +19,10 @@ from app.schemas import Package, Version
 
 reg_patterns = {
     'pkg': {'reg': r'\\ProvidesPackage\s*\{(.*?)\}\s*(?:\[([\S\s]*?)\])?', 'version': 2, 'name': 1},  # Group 1=name, 2=version
-    'cls': {'reg': r'\\ProvidesClass\s*\{(.*?)\}[^\[]*([\S\s]*?)\]', 'version': 2, 'name': 1}, 
+    'cls': {'reg': r'\\ProvidesClass\s*\{(.*?)\}\s*(?:\[([\S\s]*?)\])?', 'version': 2, 'name': 1}, 
     'expl_pkg': {'reg': r'\\ProvidesExplPackage\s*\{(.*?)\}\s*\{(.*?\}\s*\{.*?)\}\s*\{(.*?)\}', 'version': 2, 'name': 1},  # Group 1=name, 2=date + version, 3=description
     'expl_cls': {'reg': r'\\ProvidesExplClass\s*\{(.*?)\}\s*\{(.*?\}\s*\{.*?)\}\s*\{(.*?)\}', 'version': 2, 'name': 1},  # Group 1=name, 2=date + version, 3=description
-    'file': {'reg': r'\\ProvidesFile\s*\{(.*?)\}\s*\[(.*?)\]', 'version': 2, 'name': 1}  # Group 1=name, 2=version
+    'file': {'reg': r'\\ProvidesFile\s*\{(.*?)\}\s*(?:\[([\S\s]*?)\])?', 'version': 2, 'name': 1}  # Group 1=name, 2=version
 
 }
 
@@ -196,13 +196,9 @@ def extract_version_from_file(fpath: str, pkg_id: str, index: defaultdict, commi
 
 
 def get_relevant_files(subdir: str, pkg: Package, sty_cls = True, ins = True, dtx = True):
+    """Finds sty/cls that are named after pkg.id or pkg.name and all ins and dtx files"""
     relevant_files = {'sty/cls': [], 'ins': [], 'dtx': []}
 
-    pkg_in_isolated_folder = basename(subdir) == pkg.id or basename(subdir) == pkg.name
-    """ If pkg has its own folder, all dtx/ins-files should be installed. 
-        If not (e.g. trace, which is in required/tools with other packages), 
-        only files named with pkg.id or pkg.name should be installed.
-    """
     
     if subdir and os.path.islink(subdir): 
         print(subdir + " is a symlink, resolving now")
@@ -214,9 +210,9 @@ def get_relevant_files(subdir: str, pkg: Package, sty_cls = True, ins = True, dt
         for file in files:
             if sty_cls and file in [f"{pkg.name}.sty", f"{pkg.name}.cls", f"{pkg.id}.sty", f"{pkg.id}.cls"]:
                 relevant_files['sty/cls'].append(join(path, file))
-            elif ins and (pkg_in_isolated_folder and file.endswith('.ins') or not pkg_in_isolated_folder and file in [f"{pkg.id}.ins",f"{pkg.name}.ins"] ):
+            elif ins and file.endswith('.ins'):
                 relevant_files['ins'].insert(0 if basename(file).startswith(pkg.name) or basename(file).startswith(pkg.id) else -1, join(path, file))
-            elif dtx and (pkg_in_isolated_folder and file.endswith('.dtx') or not pkg_in_isolated_folder and file in [f"{pkg.id}.dtx",f"{pkg.name}.dtx"] ):
+            elif dtx and file.endswith('.dtx'):
                 relevant_files['dtx'].insert(0 if basename(file).startswith(pkg.name) or basename(file).startswith(pkg.id) else -1, join(path, file))
     return relevant_files
 
