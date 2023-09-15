@@ -225,7 +225,7 @@ class CTAN_historical_git(IArchive):
 
             # Try to extract versions from pkg_name.sty/.cls
             for file in relevant_files['sty/cls']:
-                found = helpers.extract_version_from_file(file, pkg.id, self._index, commit_hash)
+                found = found or helpers.extract_version_from_file(file, pkg.id, self._index, commit_hash)
 
             if found:
                 continue
@@ -243,10 +243,7 @@ class CTAN_historical_git(IArchive):
                 _relevant_files = helpers.get_relevant_files(pkg_dir, pkg, sty_cls=True, ins=False, dtx=False)
                 # Try to extract versions from pkg_name.sty/.cls
                 for file in _relevant_files['sty/cls']:
-                    found = helpers.extract_version_from_file(file, pkg.id, self._index, commit_hash)
-
-                if found:
-                    break
+                    found = found or helpers.extract_version_from_file(file, pkg.id, self._index, commit_hash)
             
             if found or relevant_files['ins']: # Dont try to install dtx-files if ins-file is present. This can lead to timeout-error for every dtx-file, which can be many (e.g. acrotex)
                 continue
@@ -260,10 +257,7 @@ class CTAN_historical_git(IArchive):
                 _relevant_files = helpers.get_relevant_files(pkg_dir, pkg, sty_cls=True, ins=False, dtx=False)
                 # Try to extract versions from pkg_name.sty/.cls
                 for file in _relevant_files['sty/cls']:
-                    found = helpers.extract_version_from_file(file, pkg.id, self._index, commit_hash)
-
-                if found:
-                    break
+                    found = found or helpers.extract_version_from_file(file, pkg.id, self._index, commit_hash)
             
             if not found:
                 self._index_logger.info(f'WARNING: Couldnt find any version for {pkg.name}. Files: {[basename(file) for file in os.listdir(pkg_dir)]}')
