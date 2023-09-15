@@ -37,11 +37,9 @@ If you don't want to run VPTAN using Docker, you can clone the repository to you
 
 3. [Start a virtual environment](https://python.land/virtual-environments/virtualenv) and install VPTAN's dependencies
 
-    `python -m venv venv`
-
-    `source venv/bin/activate`
-
-    `pip install -r requirements.txt`
+    1. `python -m venv venv`
+    2. `source venv/bin/activate`
+    3. `pip install -r requirements.txt`
 
 4. Start VPTAN
 
@@ -55,10 +53,10 @@ If you don't want to run VPTAN using Docker, you can clone the repository to you
 We will only provide a short overview of the API here. To see the full documentation, run VPTAN and go to [/docs](http://127.0.0.1:8000/docs)
 
 ### /packages/{pkg_id}
-**Required**
+#### Required
 - *pkg_id*: Id of the package you want to download, e.g. "amsmath"
 
-**Optional**
+#### Optional
 - *number*: Version number to download, e.g. 2.17j
 - *date*: Version date to download, e.g. 2021-04-20
 - *closest*: If requested version is not available, should the closest later version be downloaded?
@@ -67,6 +65,6 @@ We will only provide a short overview of the API here. To see the full documenta
 
 Some packages on CTAN are available under an alias, e.g. pgf which has the alias tikz. This endpoint can be used to get the name of the original package based on its alias
 
-**Optional**
+#### Optional
 - *id*: Id of the package you want to know the alias of, e.g. tikz
 - *name*: Name of the package you want to know the alias of, e.g. TikZ (providing only id is preferable)
