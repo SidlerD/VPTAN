@@ -48,8 +48,9 @@ def get_alias_of_package(id = '', name = '') -> dict:
     if not found:
         logger.info(f"Couldn't find {id if id else name} in list of aliases")
 
-        background_thread = threading.Thread(target=update_aliases)
-        background_thread.start()
+        # TODO: Reactivate this once update_alias terminates if last call was too recent
+        # background_thread = threading.Thread(target=update_aliases)
+        # background_thread.start()
 
         raise HTTPException(status_code=404, detail=f"{id if id else name} is not available on CTAN under any alias")
 

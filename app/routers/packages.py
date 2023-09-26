@@ -4,7 +4,7 @@ from typing import Union
 from fastapi import APIRouter, Depends, Response, HTTPException
 from app.helpers import helpers
 
-from app.services import ArchiveIndex
+from app.services import ArchiveService
 from app.archives import CTAN
 from ..dependencies import pkg_id_exists, valid_date
 from app.schemas import Package, Version
@@ -32,7 +32,7 @@ def get_package(ctan_pkg: Package = Depends(pkg_id_exists), date: Union[date, No
     else:
         try:
             ctan_pkg.version = req_version 
-            byte_data = ArchiveIndex.download_pkg(ctan_pkg, closest)
+            byte_data = ArchiveService.download_pkg(ctan_pkg, closest)
         except HTTPException as e:
             raise
         
