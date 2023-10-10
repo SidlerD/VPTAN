@@ -1,11 +1,12 @@
 from fastapi import FastAPI
 import uvicorn
 
-from app.routers import packages, alias
+from app.routers import packages, alias, search
 
 app = FastAPI()
 app.include_router(packages.router)
 app.include_router(alias.router)
+app.include_router(search.router)
 
 
 @app.get("/", tags=['home'])
