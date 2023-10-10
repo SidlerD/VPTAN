@@ -16,15 +16,17 @@ from app.helpers import helpers
 
 from app.schemas import Package, Version
 
+# TODO: Definitely need to test these new Regexes
+provides_pattern = r'\\Provides(?:Package|File|Class)\s*\{(?P<name>.*?)\}\s*(?:\[(?P<version>[\S\s]*?)\])?'
+provides_expl_pattern = r'\\ProvidesExplPackage\s*\{(?P<name>.*?)\}\s*\{(?P<version>.*?\}\s*\{.*?)\}\s*\{(.*?)\}'
+# reg_patterns = {
+#     'pkg': {'reg': r'\\ProvidesPackage\s*\{(.*?)\}\s*(?:\[([\S\s]*?)\])?', 'version': 2, 'name': 1},  # Group 1=name, 2=version
+#     'cls': {'reg': r'\\ProvidesClass\s*\{(.*?)\}\s*(?:\[([\S\s]*?)\])?', 'version': 2, 'name': 1}, 
+#     'expl_pkg': {'reg': r'\\ProvidesExplPackage\s*\{(.*?)\}\s*\{(.*?\}\s*\{.*?)\}\s*\{(.*?)\}', 'version': 2, 'name': 1},  # Group 1=name, 2=date + version, 3=description
+#     'expl_cls': {'reg': r'\\ProvidesExplClass\s*\{(.*?)\}\s*\{(.*?\}\s*\{.*?)\}\s*\{(.*?)\}', 'version': 2, 'name': 1},  # Group 1=name, 2=date + version, 3=description
+#     'file': {'reg': r'\\ProvidesFile\s*\{(.*?)\}\s*(?:\[([\S\s]*?)\])?', 'version': 2, 'name': 1}  # Group 1=name, 2=version
 
-reg_patterns = {
-    'pkg': {'reg': r'\\ProvidesPackage\s*\{(.*?)\}\s*(?:\[([\S\s]*?)\])?', 'version': 2, 'name': 1},  # Group 1=name, 2=version
-    'cls': {'reg': r'\\ProvidesClass\s*\{(.*?)\}\s*(?:\[([\S\s]*?)\])?', 'version': 2, 'name': 1}, 
-    'expl_pkg': {'reg': r'\\ProvidesExplPackage\s*\{(.*?)\}\s*\{(.*?\}\s*\{.*?)\}\s*\{(.*?)\}', 'version': 2, 'name': 1},  # Group 1=name, 2=date + version, 3=description
-    'expl_cls': {'reg': r'\\ProvidesExplClass\s*\{(.*?)\}\s*\{(.*?\}\s*\{.*?)\}\s*\{(.*?)\}', 'version': 2, 'name': 1},  # Group 1=name, 2=date + version, 3=description
-    'file': {'reg': r'\\ProvidesFile\s*\{(.*?)\}\s*(?:\[([\S\s]*?)\])?', 'version': 2, 'name': 1}  # Group 1=name, 2=version
-
-}
+# }
 
 class VersionFromIndex(TypedDict):
     raw: str
@@ -38,6 +40,7 @@ def version_matches(version: VersionFromIndex, pkg_version: Version):
         version['date'] = parser.parse(version['date']).date()
     if type(pkg_version.date) == str:
         pkg_version.date = parser.parse(pkg_version.date).date()
+        
     if not pkg_version:
         return True
     if pkg_version.date and pkg_version.date == version['date']:
@@ -53,7 +56,7 @@ def parse_version(version: str) -> VersionFromIndex:
     if(type(version) == str): # e.g. '2005/05/09 v0.3 1, 2, many: numbersets  (ums)'
         # Assumes version number is followed by a space
         number_pattern = r"\d+\.\d+(?:\.\d+)?-?(?:[a-z0-9])*\b"
-        single_number_pattern = r"(?<=v)\d" # FIXME: Problem: Trying to capture single-digit versions without leading v would capture numbers in date
+        single_number_pattern = r"(?<=v)\d" # Problem: Trying to capture single-digit versions without leading v would capture numbers in date
 
         number_match = re.search(number_pattern, version)
         single_number_match = re.search(single_number_pattern, version)
@@ -149,37 +152,24 @@ def extract_version_from_file(fpath: str, pkg_id: str, index: defaultdict, commi
                 content = f.read()
                 # print(f'Opened file {basename(fpath)} with errors="ignore" and encoding="utf-8". Error: {e}')
         
-        if fpath.endswith('.sty'):
-            for regex in [reg_patterns['pkg'], reg_patterns['expl_pkg']]:
-                match = re.search(regex['reg'], content)
-                if match:
-                    version_str = match.group(regex['version']) 
-
-                    # If version_str is a variable (e.g. \filedate), find definition of variable in sty-file and use that 
-                    for variable in re.findall(r'\\(?!n)[^\\]+', version_str):
-                        pattern = r'\\def\s*%s\s*\{(.*?)\}' %re.escape(variable)
-                        version_match = re.search(pattern, content)
-                        if version_match:
-                            version_str = version_str.replace(variable, " " + version_match.group(1) + " ")
-                            logger.debug(f"Substituted {version_match.group(1)} for {variable} in {basename(fpath)}")
-                    break
-        
-        elif fpath.endswith('.cls'):
-            for regex in [reg_patterns['cls'], reg_patterns['expl_cls'], reg_patterns['file']]:
-                match = re.search(regex['reg'], content)
-                if match:
-                    version_str = match.group(regex['version']) 
-                    
-                    # If version_str is a variable (e.g. \filedate), find definition of variable in sty-file and use that 
-                    for variable in re.findall(r'\\(?!n)[^\\]+', version_str):
-                        pattern = r'\\def\s*%s\s*\{(.*?)\}' %re.escape(variable)
-                        version_match = re.search(pattern, content)
-                        if version_match:
-                            version_str = version_str.replace(variable, " " + version_match.group(1) + " ")
-                            logger.debug(f"Substituted {version_match.group(1)} for {variable} in {basename(fpath)}")
-                    break
+        for regex in [provides_pattern, provides_expl_pattern]:
+            match = re.search(regex, content)
+            if match:
+                version_str = match.group('version') 
+                
+                # If version_str is a variable (e.g. \filedate), find definition of variable in sty-file and use that 
+                for variable in re.findall(r'\\(?!n)[^\\]+', version_str):
+                    pattern = r'\\def\s*%s\s*\{(.*?)\}' %re.escape(variable)
+                    version_match = re.search(pattern, content)
+                    if version_match:
+                        version_str = version_str.replace(variable, " " + version_match.group(1) + " ")
+                        logger.debug(f"Substituted {version_match.group(1)} for {variable} in {basename(fpath)}")
+                break
 
         if not version_str:
+            # Add to index even if no version found
+            # Reason: Provides data for /search endpoint
+            index[commit_hash][pkg_id][basename(fpath)] = None
             return False
         
         version = helpers.parse_version(version_str)

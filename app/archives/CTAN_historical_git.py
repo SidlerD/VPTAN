@@ -77,27 +77,31 @@ class CTAN_historical_git(IArchive):
 
     def get_commit_hash(self, pkg: Package, closest: bool) -> Optional[str]:
         """Get commit hash at which pkg has the correct version in git archive"""
-        all_versions = []
+        all_versions: list[dict] = []
 
         for hash in self._index:
             if not self._index[hash] or not self._index[hash][pkg.id]:
                 continue
-            files = self._index[hash][pkg.id]
-            if 'Error' in files.keys():
+            all_files = self._index[hash][pkg.id]
+            files_with_version = [file for file in all_files if None not in file.values()]
+            if 'Error' in files_with_version.keys():
                 continue
-            if len(files) != 1:
-                self._index_logger.info(f"{pkg.id} has {len(files)} files with a version: {files.values()}. Returning first one")
+            if len(files_with_version) != 1:
+                self._index_logger.info(f"{pkg.id} has {len(files_with_version)} files with a version: {files_with_version.values()}. Returning first one")
+            
             if closest:
-                all_versions.append({hash: files})
+                all_versions.append({hash: files_with_version})
                 continue
 
-            for version in files.values():
+            # Check if any of the pkg's files has the requested version at this hash
+            # If so, return the hash, else go to next hash
+            for version in files_with_version.values():
                 if helpers.version_matches(version, pkg.version):
                     self._index_logger.info(f"{pkg.id} has version {pkg.version} at commit {hash}")
                     return hash
 
         if closest and all_versions and pkg.version.date:
-            def  get_date_from_pair(pair: dict):
+            def get_date_from_pair(pair: dict):
                 # ASSUMPTION: Every file for one package at one commit hash has same version
                 file = pair[next(iter(pair))]
                 if 'Error' in file:
@@ -109,8 +113,6 @@ class CTAN_historical_git(IArchive):
             req_date = pkg.version.date
             all_versions_clean = [{next(iter(pair)): get_date_from_pair(pair)} for pair in all_versions]
 
-            # later_versions = filter(lambda pair: self.get_date_from_pair(pair) >= req_date, all_versions)
-            # closest_later = min(later_versions, key = lambda pair: self.get_date_from_pair(pair))
             later_versions = filter(lambda pair: pair[next(iter(pair))] >= req_date, all_versions_clean)
             closest_later = min(later_versions, key = lambda pair: pair[next(iter(pair))])
 
@@ -212,7 +214,8 @@ class CTAN_historical_git(IArchive):
                 
             # Case where Ctan.path is a file, not a folder
             if isfile(pkg_dir):
-                # pkg.ctan.path can be path to a file (e.g. /biblio/bibtex/contrib/misc/aaai-named.bst for aaai-named): In this case, only look at that one file
+                # pkg.ctan.path can be path to a file (e.g. /biblio/bibtex/contrib/misc/aaai-named.bst for aaai-named): 
+                # In this case, only look at that one file
                 found = helpers.extract_version_from_file(pkg_dir, pkg.id, self._index, commit_hash)
                 if not found:
                     self._index[commit_hash][pkg.id]["Error"] = f"{pkg.id} has path {pkg_dir}, which has no version"
