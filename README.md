@@ -5,27 +5,6 @@ VPTAN provides an easy-to-use API to download packages in historic versions. It 
 VPTAN doesn't host its own repository/archive that stores older versions of packages. Instead it is built on top of the existing [historical git archive of CTAN](https://git.texlive.info/CTAN/), which is hosted by texlive.info. Any call to VPTAN with a specified version will internally figure out under which commit-hash the package can be found in the right version and download the file from the afore-mentioned git archive.
 
 ## Setup
-### Using Docker
-We provide ready-to-use images of VPTAN on the [Docker Hub](https://hub.docker.com/repository/docker/sidlerd/vptan/general). If you already have Docker installed, this should be the easiest way of getting started with VPTAN.
-
-1. Pull the image
-
-   `docker pull sidlerd/vptan:<tag>`
-
-   Note: A list of valid `<tags>` can be found at https://hub.docker.com/repository/docker/sidlerd/vptan/general under Tags
-
-2. Run the container
-
-   `docker run -p 8000:8000 sidlerd/vptan:<tag>`
-
-   Run the container you just pulled. The option `-p 8000:8000` is needed so that you can access the API on your machine
-
-3. Test the API
-
-   Go to http://127.0.0.1:8000/ to see if the API is running. 
-
-### Using git clone
-If you don't want to run VPTAN using Docker, you can clone the repository to your machine and run it manually
 
 1. Clone this repository
 
@@ -35,17 +14,17 @@ If you don't want to run VPTAN using Docker, you can clone the repository to you
 
    `cd VPTAN`
 
-3. [Start a virtual environment](https://python.land/virtual-environments/virtualenv) and install VPTAN's dependencies
+3. [Create and start a virtual environment](https://python.land/virtual-environments/virtualenv) with the name venv
 
-    1. `python -m venv venv`
-    2. `source venv/bin/activate`
-    3. `pip install -r requirements.txt`
+4. Install VPTAN's dependencies
 
-4. Start VPTAN
+   `pip install -r requirements.txt`
+
+5. Start VPTAN
 
    `python -m app.main`
 
-5. Test the API
+6. Test the API
 
    Go to http://127.0.0.1:8000/ to see if the API is running. 
 
