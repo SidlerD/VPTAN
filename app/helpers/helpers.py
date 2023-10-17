@@ -29,11 +29,11 @@ class VersionFromIndex(TypedDict):
 
 def version_matches(version: VersionFromIndex, pkg_version: Version):
     # TODO: Is this enough?
-    if type(version['date']) == str:
+    if isinstance(version['date'], str):
         version['date'] = parser.parse(version['date']).date()
-    if type(pkg_version.date) == str:
+    if isinstance(pkg_version.date, str):
         pkg_version.date = parser.parse(pkg_version.date).date()
-        
+
     if not pkg_version:
         return True
     if pkg_version.date and pkg_version.date == version['date']:
@@ -44,13 +44,14 @@ def version_matches(version: VersionFromIndex, pkg_version: Version):
 
 
 def parse_version(version: str) -> VersionFromIndex:
-    if version == "" or version == None:
+    if version == "" or version is None:
         return {'raw': version, 'date': None, 'number': None}
 
-    if(type(version) == str):  # e.g. '2005/05/09 v0.3 1, 2, many: numbersets  (ums)'
+    if isinstance(version, str):  # e.g. '2005/05/09 v0.3 1, 2, many: numbersets  (ums)'
         # Assumes version number is followed by a space
         number_pattern = r"\d+\.\d+(?:\.\d+)?-?(?:[a-z0-9])*\b"
-        single_number_pattern = r"(?<=v)\d" # Problem: Trying to capture single-digit versions without leading v would capture numbers in date
+        # Problem: Trying to capture single-digit versions without leading v would capture numbers in date
+        single_number_pattern = r"(?<=v)\d"
 
         number_match = re.search(number_pattern, version)
         single_number_match = re.search(single_number_pattern, version)
@@ -87,8 +88,6 @@ def parse_changed_files(path_to_ctan: str) -> "list[str]":
 
 
 def download_files_to_binary_zip(file_urls: "list[str]", pkg_id: str) -> bytes:
-    zip_filename = "%s.zip" % pkg_id
-
     s = io.BytesIO()
     zf = zipfile.ZipFile(file=s, mode="w")
 
@@ -144,15 +143,15 @@ def extract_version_from_file(fpath: str, pkg_id: str, index: defaultdict, commi
                 # TODO: Find better solution, or figure out if this is good enough
                 content = f.read()
                 # print(f'Opened file {basename(fpath)} with errors="ignore" and encoding="utf-8". Error: {e}')
-        
+
         for regex in [provides_pattern, provides_expl_pattern]:
             match = re.search(regex, content)
             if match:
-                version_str = match.group('version') 
-                
-                # If version_str is a variable (e.g. \filedate), find definition of variable in sty-file and use that 
+                version_str = match.group('version')
+
+                # If version_str is a variable (e.g. \filedate), find definition of variable in sty-file and use that
                 for variable in re.findall(r'\\(?!n)[^\\]+', version_str):
-                    pattern = r'\\def\s*%s\s*\{(.*?)\}' %re.escape(variable)
+                    pattern = r'\\def\s*%s\s*\{(.*?)\}' % re.escape(variable)
                     version_match = re.search(pattern, content)
                     if version_match:
                         version_str = version_str.replace(variable, " " + version_match.group(1) + " ")
@@ -186,15 +185,15 @@ def get_relevant_files(subdir: str, pkg: Package, sty_cls=True, ins=True, dtx=Tr
         # TODO: Check if this works for e.g. a4 or other symlinked packages. See if os.walk finds the files
         subdir = os.readlink(subdir)
         print("subdir is now " + subdir)
-    # Get relevant files in all subdirs. followlinks=True because for some packages, package folder is a symlink, e.g. a4
+    # Get relevant files in all subdirs. followlinks=True since for some packages, package folder is a symlink, e.g. a4
     for path, subdirs, files in os.walk(subdir, followlinks=True):
         for file in files:
             if sty_cls and file in [f"{pkg.name}.sty", f"{pkg.name}.cls", f"{pkg.id}.sty", f"{pkg.id}.cls"]:
                 relevant_files['sty/cls'].append(join(path, file))
             elif ins and file.endswith('.ins'):
-                relevant_files['ins'].insert(0 if basename(file).startswith(pkg.name) or basename(file).startswith(pkg.id) else -1, join(path, file))
+                relevant_files['ins'].insert(0 if basename(file).startswith(pkg.id) else -1, join(path, file))
             elif dtx and file.endswith('.dtx'):
-                relevant_files['dtx'].insert(0 if basename(file).startswith(pkg.name) or basename(file).startswith(pkg.id) else -1, join(path, file))
+                relevant_files['dtx'].insert(0 if basename(file).startswith(pkg.id) else -1, join(path, file))
     return relevant_files
 
 

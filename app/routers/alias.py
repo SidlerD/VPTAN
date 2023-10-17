@@ -1,13 +1,9 @@
-from datetime import date
-import io
 import json
-import threading
 from typing import Union
-from fastapi import APIRouter, Depends, Response, HTTPException, status
+from fastapi import APIRouter, HTTPException, status
 import requests
 from app.helpers import helpers
-from os.path import isfile, exists, abspath
-import asyncio
+from os.path import isfile, abspath
 
 logger = helpers.make_logger('api_alias')
 aliases_file = 'CTAN_aliases.json'
@@ -16,8 +12,9 @@ _ctan_url = "https://www.ctan.org/"
 router = APIRouter(
     prefix="/alias",
     tags=["alias"],
-        responses={404: {"description": "Has no alias"}},
+    responses={404: {"description": "Has no alias"}},
 )
+
 
 @router.get("/")
 def getAlias(id: Union[str, None] = None, name: Union[str, None] = None):
@@ -26,10 +23,11 @@ def getAlias(id: Union[str, None] = None, name: Union[str, None] = None):
     return get_alias_of_package(id, name)
 
 
-
-def get_alias_of_package(id = '', name = '') -> dict:
-    """Some packages are not available on CTAN directly, but are under another package, where they are listed as 'aliases'
-    Example: tikz is not available on CTAN as package, but is listed in alias field of pgf. Therefore, we should download pgf to get tikz"""
+def get_alias_of_package(id='', name='') -> dict:
+    """Some packages are not available on CTAN directly, but are under another package,\
+        where they are listed as 'aliases'
+        Example: tikz is not available on CTAN as package, but is listed in alias field of pgf.\
+        Therefore, we should download pgf to get tikz"""
     logger.info(f'Searching for {id if id else name} in aliases')
 
     found = False
@@ -44,7 +42,7 @@ def get_alias_of_package(id = '', name = '') -> dict:
                 if id and alias['id'] == id or name and alias['name'] == name:
                     found = True
                     break
-    
+
     if not found:
         logger.info(f"Couldn't find {id if id else name} in list of aliases")
 
@@ -72,12 +70,19 @@ def update_aliases() -> bool:
                 try:
                     alias_info = pkgInfo['aliases']
                     for alias in alias_info:
-                        aliases.append({'name': alias['name'], 'id': alias['id'], 'aliased_by': {'id': pkg['key'], 'name': pkg['name']}})
+                        aliases.append({
+                            'name': alias['name'],
+                            'id': alias['id'],
+                            'aliased_by': {
+                                'id': pkg['key'],
+                                'name': pkg['name']
+                                }
+                        })
                 except Exception as e:
-                    logger.warning(f'Something went wrong while extracting alias for {pkgInfo["id"]}, alias = {pkgInfo["aliases"]}: {str(e)}')
+                    logger.warning(f'Something went wrong while extracting alias for {pkgInfo["id"]}, alias = {pkgInfo["aliases"]}: {str(e)}')  # noqa: E501
         except ValueError as e:
             print(e)
-    
+
     with open(aliases_file, 'w') as f:
         json.dump(aliases, f, indent=2)
 
@@ -86,8 +91,8 @@ def get_package_info(id: str):
     pkgInfo = requests.get(f"{_ctan_url}json/2.0/pkg/{id}").json()
     if "id" not in pkgInfo or "name" not in pkgInfo:
         raise ValueError("CTAN has no information about package with id " + id)
-    
+
     if 'ctan' not in pkgInfo or not pkgInfo['ctan']:
         raise ValueError(f"{id} is on CTAN, but not downloadable")
-    
+
     return pkgInfo
