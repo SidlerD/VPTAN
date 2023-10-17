@@ -17,9 +17,9 @@ from collections import defaultdict
 
 
 class CTAN_historical_git(IArchive):
-    def __init__(self, ctan_archive_path = 'CTAN') -> None:
+    def __init__(self, ctan_archive_path='CTAN') -> None:
         self._ctan_path = os.path.normpath(ctan_archive_path)
-        # self._ctan_path = Path(ctan_archive_path) 
+        # self._ctan_path = Path(ctan_archive_path)
         self._pkg_info_file = "CTAN_packages.json"
         self._index_file = "CTAN_Archive_index.json"
         self._pkg_infos = self._get_pkg_infos()
@@ -31,7 +31,7 @@ class CTAN_historical_git(IArchive):
         self._index_logger.info("Updating index")
         old_cwd = os.getcwd()
         os.chdir(self._ctan_path)
-        
+
         try:
             # Checkout master (Restores HEAD to latest commit, otherwise getting list of all commits not possible)
             curr_branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).decode().strip()
@@ -40,7 +40,8 @@ class CTAN_historical_git(IArchive):
 
             # TODO: Pull latest changes here
 
-            commit_hashes = subprocess.check_output(['git', 'rev-list', 'HEAD'], cwd=self._ctan_path).decode().splitlines()
+            commit_hashes = subprocess.check_output(
+                ['git', 'rev-list', 'HEAD'], cwd=self._ctan_path).decode().splitlines()
             indexed_commit_hashes = [hash for hash in self._index.keys()]
 
             # Only build index for hashes which are not yet in index
@@ -54,11 +55,11 @@ class CTAN_historical_git(IArchive):
 
             for i, commit_hash in enumerate(hashes_to_index):
                 # For every n-th commit, ...
-                if i%inspect_every_nth_commit == 0:
+                if i % inspect_every_nth_commit == 0:
                     subprocess.call(['git', 'stash'])  # stash any changes,
                     subprocess.call(['git', 'checkout', '--force', commit_hash])  # checkout the commit and
                     try:
-                        self._build_index_for_hash(commit_hash) # Build the index for current hash
+                        self._build_index_for_hash(commit_hash)  # Build the index for current hash
                     except Exception as e:
                         self._index_logger.error(f"unexpected error at commit {commit_hash}: {e}")
                         logging.exception(e)
@@ -67,7 +68,7 @@ class CTAN_historical_git(IArchive):
                     self._index_logger.info(f"Skipping commit {commit_hash}")
 
             self._index_logger.info("All commit-hashes done")
-    
+
         except Exception as e:
             self._index_logger.error(str(e))
             logging.exception(e)
@@ -86,7 +87,7 @@ class CTAN_historical_git(IArchive):
             if 'Error' in files.keys():
                 continue
             if len(files) != 1:
-                self._index_logger.info(f"{pkg.id} has {len(files)} files with a version: {files.values()}. Returning first one")
+                self._index_logger.info(f"{pkg.id} has {len(files)} files with a version: {files.values()}. Returning first one")  # noqa: E501
             if closest:
                 all_versions.append({hash: files})
                 continue
@@ -97,7 +98,7 @@ class CTAN_historical_git(IArchive):
                     return hash
 
         if closest and all_versions and pkg.version.date:
-            def  get_date_from_pair(pair: dict):
+            def get_date_from_pair(pair: dict):
                 # ASSUMPTION: Every file for one package at one commit hash has same version
                 file = pair[next(iter(pair))]
                 if 'Error' in file:
@@ -105,19 +106,19 @@ class CTAN_historical_git(IArchive):
                 version = file[next(iter(file))]
                 date = version['date']
                 return date if isinstance(date, datetime.date) else parser.parse(date).date()
-    
+
             req_date = pkg.version.date
             all_versions_clean = [{next(iter(pair)): get_date_from_pair(pair)} for pair in all_versions]
 
             # later_versions = filter(lambda pair: self.get_date_from_pair(pair) >= req_date, all_versions)
             # closest_later = min(later_versions, key = lambda pair: self.get_date_from_pair(pair))
             later_versions = filter(lambda pair: pair[next(iter(pair))] >= req_date, all_versions_clean)
-            closest_later = min(later_versions, key = lambda pair: pair[next(iter(pair))])
+            closest_later = min(later_versions, key=lambda pair: pair[next(iter(pair))])
 
             self._download_logger.info(f"For {pkg.id}({pkg.version.date}): Closest version is {closest_later}")
             return next(iter(closest_later))
         return None
-    
+
         # TODO: Could check the date of each commit in archive, and then take the hash which is one day after req_date
         # https://stackoverflow.com/questions/50452866/how-to-show-date-and-time-of-a-commit-by-hash#:~:text=git%20show%20%2D%2Dno%2Dpatch%20%2D%2Dno%2Dnotes%20%2D%2Dpretty%3D%27%25cd%27%20fe1ddcdef
 
@@ -143,21 +144,21 @@ class CTAN_historical_git(IArchive):
             with open(self._pkg_info_file, "r", encoding='utf-8') as f:
                 data = json.load(f)
                 res = [Package(**pkginfo) for pkginfo in data]
-        
+
         return res
 
     def _read_index_file(self):
         def defaultdict_from_dict(d):
-            nd = lambda: defaultdict(nd)
+            nd = lambda: defaultdict(nd)  # noqa: E731
             ni = nd()
             ni.update(d)
             return ni
-        
+
         if exists(self._index_file):
             with open(self._index_file, 'r') as f:
                 return json.load(f, object_hook=defaultdict_from_dict)
         else:
-            with open(self._index_file, 'w') as f :
+            with open(self._index_file, 'w') as f:
                 json.dump({}, f)
             return defaultdict(lambda: defaultdict(dict))
 
@@ -171,15 +172,16 @@ class CTAN_historical_git(IArchive):
             # print(self._index)
             with open(self._index_file, "w") as indexf:
                 indexf.write(json.dumps(self._index, default=lambda elem: str(elem), indent=2))
-        
+
         self._index_logger.info("Wrote index to file")
 
     def _build_index_for_hash(self, commit_hash):
-        """Extracts versions for all packages that changed at 7 or less days before specified commit, write results to index"""
+        """Extracts versions for all packages that changed at 7 \
+            or less days before specified commit, write results to index"""
         curr_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
         if curr_hash != commit_hash:
             raise ValueError(f"Building index for {commit_hash}, but git-repo is at {curr_hash}")
-        
+
         changed_files = helpers.parse_changed_files(self._ctan_path)
         changed_dirs = set(os.path.split(file)[0] for file in changed_files)
         self._index_logger.info(f"Building index for {commit_hash}. {len(changed_dirs)} changed dirs")
@@ -187,32 +189,33 @@ class CTAN_historical_git(IArchive):
         # Make sure we can write to index at commit hash
         if not self._index[commit_hash]:
             self._index[commit_hash] = defaultdict(lambda: defaultdict(dict))
-        for pkg in self._pkg_infos: # For each package:
+        for pkg in self._pkg_infos:  # For each package:
             if not pkg.ctan or not pkg.ctan.path:
                 self._index_logger.debug(f"{pkg.id} has no path on ctan. Skipping")
                 continue
-            pkg.ctan.path = pkg.ctan.path.lstrip(os.path.sep) 
+            pkg.ctan.path = pkg.ctan.path.lstrip(os.path.sep)
             pkg_dir = join(self._ctan_path, pkg.ctan.path)
 
             # Skip packages that haven't changed, except for first commit
             if len(self._index) > 1:
                 if isfile(pkg_dir) and pkg.ctan.path not in changed_files:
                     self._index_logger.debug(f"{pkg.id} has not changed")
-                    continue    
+                    continue
                 if isdir(pkg_dir) and pkg.ctan.path not in changed_dirs:
                     self._index_logger.debug(f"{pkg.id} has not changed")
-                    continue    
-            
+                    continue
+
             found = False
-            
+
             if not exists(pkg_dir):
                 self._index_logger.debug(f"{pkg.id} should be at {pkg_dir}, which doesn't exist.")
                 # self._index[commit_hash][pkg.id]["Error"] = f"{pkg.id} should be at {pkg_dir}, which doesn't exist."
                 continue
-                
+
             # Case where Ctan.path is a file, not a folder
             if isfile(pkg_dir):
-                # pkg.ctan.path can be path to a file (e.g. /biblio/bibtex/contrib/misc/aaai-named.bst for aaai-named): In this case, only look at that one file
+                # pkg.ctan.path can be path to a file (e.g. /biblio/bibtex/contrib/misc/aaai-named.bst for aaai-named):
+                # In this case, only look at that one file
                 found = helpers.extract_version_from_file(pkg_dir, pkg.id, self._index, commit_hash)
                 if not found:
                     self._index[commit_hash][pkg.id]["Error"] = f"{pkg.id} has path {pkg_dir}, which has no version"
@@ -244,8 +247,10 @@ class CTAN_historical_git(IArchive):
                 # Try to extract versions from pkg_name.sty/.cls
                 for file in _relevant_files['sty/cls']:
                     found = found or helpers.extract_version_from_file(file, pkg.id, self._index, commit_hash)
-            
-            if found or relevant_files['ins']: # Dont try to install dtx-files if ins-file is present. This can lead to timeout-error for every dtx-file, which can be many (e.g. acrotex)
+
+            # Dont try to install dtx-files if ins-file is present.
+            # This can lead to timeout-error for every dtx-file, which can be many (e.g. acrotex)
+            if found or relevant_files['ins']:
                 continue
 
             # Look at dtx files and try installing them
@@ -258,9 +263,10 @@ class CTAN_historical_git(IArchive):
                 # Try to extract versions from pkg_name.sty/.cls
                 for file in _relevant_files['sty/cls']:
                     found = found or helpers.extract_version_from_file(file, pkg.id, self._index, commit_hash)
-            
+
             if not found:
-                self._index_logger.info(f'WARNING: Couldnt find any version for {pkg.name}. Files: {[basename(file) for file in os.listdir(pkg_dir)]}')
+                self._index_logger.info(f'WARNING: Couldnt find any version for {pkg.name}. '
+                                        f'Files: {[basename(file) for file in os.listdir(pkg_dir)]}')
                 self._index[commit_hash][pkg.id]["Error"] = "No version found"
 
     def get_pkg_files(self, pkg: Package, closest: bool) -> bytes:
@@ -274,8 +280,8 @@ class CTAN_historical_git(IArchive):
         if not commit_hash:
             self._download_logger.debug(f"{pkg.id} ({pkg.version}) is not in CTAN Archive")
             return False
-        
-        overview_url =f"{base_url}{pkg.ctan.path}?id={commit_hash}"
+
+        overview_url = f"{base_url}{pkg.ctan.path}?id={commit_hash}"
         self._download_logger.info(f"CTAN Archive: Downloading {pkg.id} ({pkg.version}) from {overview_url}")
 
         # Extract download-links for each individual file
@@ -284,6 +290,7 @@ class CTAN_historical_git(IArchive):
         a_tags = soup.select("ul a")
         urls = [urljoin(base_url, elem['href']) for elem in a_tags if elem.text != "../"]
 
+        # FIXME: Some packages follow TDS: Need to expand '/tex' and/or '/latex' to get files
         # Download each file, return as binary zip-file
         self._download_logger.info(f"Downloading {len(urls)} files from {overview_url}")
         return helpers.download_files_to_binary_zip(urls, pkg.id)

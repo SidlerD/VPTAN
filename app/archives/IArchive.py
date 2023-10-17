@@ -1,9 +1,10 @@
-from abc import ABC, abstractmethod, abstractproperty
+from abc import ABC, abstractmethod
 
 from app.schemas import Package
 
+
 class IArchive(ABC):
-    
+
     @abstractmethod
     def update_index(self):
         pass
@@ -11,4 +12,3 @@ class IArchive(ABC):
     @abstractmethod
     def get_pkg_files(self, pkg: Package):
         pass
-

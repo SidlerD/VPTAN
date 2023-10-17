@@ -26,6 +26,7 @@ reg_patterns = {
 
 }
 
+
 class VersionFromIndex(TypedDict):
     raw: str
     date: date
@@ -33,7 +34,7 @@ class VersionFromIndex(TypedDict):
 
 
 def version_matches(version: VersionFromIndex, pkg_version: Version):
-    #TODO: Is this enough?
+    # TODO: Is this enough?
     if type(version['date']) == str:
         version['date'] = parser.parse(version['date']).date()
     if type(pkg_version.date) == str:
@@ -46,25 +47,26 @@ def version_matches(version: VersionFromIndex, pkg_version: Version):
         return True
     return False
 
+
 def parse_version(version: str) -> VersionFromIndex:
     if version == "" or version == None:
         return {'raw': version, 'date': None, 'number': None}
-    
-    if(type(version) == str): # e.g. '2005/05/09 v0.3 1, 2, many: numbersets  (ums)'
+
+    if(type(version) == str):  # e.g. '2005/05/09 v0.3 1, 2, many: numbersets  (ums)'
         # Assumes version number is followed by a space
         number_pattern = r"\d+\.\d+(?:\.\d+)?-?(?:[a-z0-9])*\b"
-        single_number_pattern = r"(?<=v)\d" # FIXME: Problem: Trying to capture single-digit versions without leading v would capture numbers in date
+        single_number_pattern = r"(?<=v)\d"  # FIXME: Problem: Trying to capture single-digit versions without leading v would capture numbers in date
 
         number_match = re.search(number_pattern, version)
         single_number_match = re.search(single_number_pattern, version)
-        
+
         if number_match:
             number = number_match.group()
         elif single_number_match:
             number = single_number_match.group()
         else:
             number = None
-        
+
         date = None
         try:
             date = parser.parse(version, fuzzy=True).date()
@@ -76,7 +78,7 @@ def parse_version(version: str) -> VersionFromIndex:
                 date = None
 
         return {'raw': version, 'date': date, 'number': number}
-    
+
     raise TypeError(f"Cannot parse {version} of type {type(version)}")
 
 
@@ -85,9 +87,8 @@ def parse_changed_files(path_to_ctan: str) -> "list[str]":
     with open(fpath, 'r') as f:
         lines = f.readlines()
         files_changed = [line.split('|')[-1].strip() for line in lines]
-    
-    return [file for file in files_changed if not file.startswith(('systems', 'indexing', 'install'))]
 
+    return [file for file in files_changed if not file.startswith(('systems', 'indexing', 'install'))]
 
 
 def download_files_to_binary_zip(file_urls: "list[str]", pkg_id: str) -> bytes:
@@ -99,20 +100,20 @@ def download_files_to_binary_zip(file_urls: "list[str]", pkg_id: str) -> bytes:
     for url in file_urls:
         # Calculate path for file in zip
         fname = os.path.basename(url).split('?')[0]
-        if not fname: # E.g. hyperref, which has /doc folder
+        if not fname:  # E.g. hyperref, which has /doc folder
             continue
 
         resp = requests.get(url)
         if not resp.ok:
             raise RuntimeError("Couldnt get file at " + url)
-        
+
         # Add file, at correct path
-        zf.writestr(data=resp.content, zinfo_or_arcname = fname)
+        zf.writestr(data=resp.content, zinfo_or_arcname=fname)
 
     # Must close zip for all contents to be written
     zf.close()
 
-    print(f"Successfully built zip-file, returning it now")
+    print("Successfully built zip-file, returning it now")
 
     # Grab ZIP file from in-memory, return
     return s.getvalue()
@@ -143,36 +144,36 @@ def extract_version_from_file(fpath: str, pkg_id: str, index: defaultdict, commi
         try:
             with open(fpath, "r") as f:
                 content = f.read()
-        except Exception as e:
+        except Exception:
             with open(fpath, 'r', encoding='utf-8', errors='ignore') as f:
                 # TODO: Find better solution, or figure out if this is good enough
                 content = f.read()
                 # print(f'Opened file {basename(fpath)} with errors="ignore" and encoding="utf-8". Error: {e}')
-        
+
         if fpath.endswith('.sty'):
             for regex in [reg_patterns['pkg'], reg_patterns['expl_pkg']]:
                 match = re.search(regex['reg'], content)
                 if match:
                     version_str = match.group(regex['version']) 
 
-                    # If version_str is a variable (e.g. \filedate), find definition of variable in sty-file and use that 
+                    # If version_str is a variable (e.g. \filedate), find definition of variable in sty-file and use it 
                     for variable in re.findall(r'\\(?!n)[^\\]+', version_str):
-                        pattern = r'\\def\s*%s\s*\{(.*?)\}' %re.escape(variable)
+                        pattern = r'\\def\s*%s\s*\{(.*?)\}' % re.escape(variable)
                         version_match = re.search(pattern, content)
                         if version_match:
                             version_str = version_str.replace(variable, " " + version_match.group(1) + " ")
                             logger.debug(f"Substituted {version_match.group(1)} for {variable} in {basename(fpath)}")
                     break
-        
+
         elif fpath.endswith('.cls'):
             for regex in [reg_patterns['cls'], reg_patterns['expl_cls'], reg_patterns['file']]:
                 match = re.search(regex['reg'], content)
                 if match:
-                    version_str = match.group(regex['version']) 
-                    
-                    # If version_str is a variable (e.g. \filedate), find definition of variable in sty-file and use that 
+                    version_str = match.group(regex['version'])
+
+                    # If version_str is a variable (e.g. \filedate), find definition of variable in sty-file and use it 
                     for variable in re.findall(r'\\(?!n)[^\\]+', version_str):
-                        pattern = r'\\def\s*%s\s*\{(.*?)\}' %re.escape(variable)
+                        pattern = r'\\def\s*%s\s*\{(.*?)\}' % re.escape(variable)
                         version_match = re.search(pattern, content)
                         if version_match:
                             version_str = version_str.replace(variable, " " + version_match.group(1) + " ")
@@ -181,13 +182,12 @@ def extract_version_from_file(fpath: str, pkg_id: str, index: defaultdict, commi
 
         if not version_str:
             return False
-        
+
         version = helpers.parse_version(version_str)
-         
+
         index[commit_hash][pkg_id][basename(fpath)] = version
         print(f"{pkg_id}: {version_str}")
         return True
-
 
     except Exception as e:
         index[commit_hash][pkg_id]["Error"] = f"{basename(fpath)}: {e}"
@@ -195,17 +195,16 @@ def extract_version_from_file(fpath: str, pkg_id: str, index: defaultdict, commi
         return False
 
 
-def get_relevant_files(subdir: str, pkg: Package, sty_cls = True, ins = True, dtx = True):
+def get_relevant_files(subdir: str, pkg: Package, sty_cls=True, ins=True, dtx=True):
     """Finds sty/cls that are named after pkg.id or pkg.name and all ins and dtx files"""
     relevant_files = {'sty/cls': [], 'ins': [], 'dtx': []}
 
-    
-    if subdir and os.path.islink(subdir): 
+    if subdir and os.path.islink(subdir):
         print(subdir + " is a symlink, resolving now")
         # TODO: Check if this works for e.g. a4 or other symlinked packages. See if os.walk finds the files
         subdir = os.readlink(subdir)
         print("subdir is now " + subdir)
-    # Get relevant files in all subdirs. followlinks=True because for some packages, the package folder is a symlink, e.g. a4
+    # Get relevant files in all subdirs. followlinks=True because for some packages, package folder is a symlink, e.g. a4
     for path, subdirs, files in os.walk(subdir, followlinks=True):
         for file in files:
             if sty_cls and file in [f"{pkg.name}.sty", f"{pkg.name}.cls", f"{pkg.id}.sty", f"{pkg.id}.cls"]:
@@ -219,8 +218,8 @@ def get_relevant_files(subdir: str, pkg: Package, sty_cls = True, ins = True, dt
 
 def make_logger(name: str = "default"):
     logger = logging.getLogger(name)
-    if logger.handlers: # Logger already existed
-        return logger 
+    if logger.handlers:  # Logger already existed
+        return logger
 
     logger.setLevel(logging.DEBUG)  # Set the desired log level
     logger.propagate = 0
@@ -228,10 +227,10 @@ def make_logger(name: str = "default"):
     # Logging to stdout
     stream_handler = logging.StreamHandler(sys.stdout)
     stream_handler.setLevel(logging.INFO)
-    
+
     # Logging to .log file
     log_file_name = f'log/{name}.log'
-    os.makedirs(os.path.dirname(log_file_name), exist_ok=True) # Make sure folder for log-file exists
+    os.makedirs(os.path.dirname(log_file_name), exist_ok=True)  # Make sure folder for log-file exists
     fh = logging.FileHandler(log_file_name)
     fh.setLevel(logging.DEBUG)
 
@@ -247,5 +246,6 @@ def make_logger(name: str = "default"):
     logger.addHandler(stream_handler)
 
     return logger
+
 
 logger = make_logger()
