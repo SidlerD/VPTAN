@@ -14,7 +14,7 @@ VPTAN doesn't host its own repository/archive that stores older versions of pack
 
    `cd VPTAN`
 
-3. [Create and start a virtual environment](https://python.land/virtual-environments/virtualenv) with the name venv
+3. [Create and start a virtual environment](https://python.land/virtual-environments/virtualenv) with the name venv (Note: Use python 3.10.2 when creating venv)
 
 4. Install VPTAN's dependencies
 
